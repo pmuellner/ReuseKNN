@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from collections import defaultdict
 from scipy.stats import skew
+from networkx.algorithms.approximation.clustering_coefficient import average_clustering
+from networkx import Graph
 
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
@@ -55,7 +57,7 @@ def eval_network(models, measurements=[]):
     results = defaultdict(list)
     for m_at_k in models:
         if "outdegree" in measurements:
-            outdegree = np.mean([len(students) for students in m_at_k.students.values()])
+            outdegree = m_at_k.get_degree()
             results["outdegree"].append(outdegree)
         if "pathlength" in measurements:
             pathlength = m_at_k.get_path_length()
@@ -81,7 +83,8 @@ reader = Reader(rating_scale=(1, 5))
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
-K = np.arange(1, 30, 5)
+#K = np.arange(1, 30, 2)
+K = np.arange(1, 30, 2)
 
 mae_1, outdegrees_1, pathlength_1, skew_1 = [], [], [], []
 mae_2, outdegrees_2, pathlength_2, skew_2 = [], [], [], []
@@ -95,8 +98,9 @@ for trainset, testset in folds.split(dataset):
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
 
+
     # KNN
-    """models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim,
+    models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim,
                                                                      "precomputed_act": act, "precomputed_pop": pop,
                                                                      "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
@@ -105,6 +109,7 @@ for trainset, testset in folds.split(dataset):
     outdegrees_1.append(resnetwork["outdegree"])
     pathlength_1.append(resnetwork["pathlength"])
     skew_1.append(resnetwork["skew"])
+
 
     # KNN + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim,
@@ -115,10 +120,10 @@ for trainset, testset in folds.split(dataset):
     mae_2.append(resratings["mae"])
     outdegrees_2.append(resnetwork["outdegree"])
     pathlength_2.append(resnetwork["pathlength"])
-    skew_2.append(resnetwork["skew"])"""
+    skew_2.append(resnetwork["skew"])
 
     # Popularity
-    """models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_2": 0.5,
+    models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_2": 0.5,
                                                                      "precomputed_sim": sim, "precomputed_act": act,
                                                                      "precomputed_pop": pop, "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
@@ -126,7 +131,7 @@ for trainset, testset in folds.split(dataset):
     mae_3.append(resratings["mae"])
     outdegrees_3.append(resnetwork["outdegree"])
     pathlength_3.append(resnetwork["pathlength"])
-    skew_3.append(resnetwork["skew"])"""
+    skew_3.append(resnetwork["skew"])
 
     # Popularity + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_2": 0.5,
@@ -139,7 +144,7 @@ for trainset, testset in folds.split(dataset):
     pathlength_4.append(resnetwork["pathlength"])
     skew_4.append(resnetwork["skew"])
 
-    """# Gain
+    # Gain
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_4": 0.5,
                                                                      "precomputed_sim": sim, "precomputed_act": act,
                                                                      "precomputed_pop": pop, "precomputed_gain": gain})
@@ -148,7 +153,7 @@ for trainset, testset in folds.split(dataset):
     mae_5.append(resratings["mae"])
     outdegrees_5.append(resnetwork["outdegree"])
     pathlength_5.append(resnetwork["pathlength"])
-    skew_5.append(resnetwork["skew"])"""
+    skew_5.append(resnetwork["skew"])
 
     # Gain + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_4": 0.5,
@@ -167,7 +172,9 @@ for trainset, testset in folds.split(dataset):
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
 """
 
-"""plt.plot(K, np.mean(mae_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
+
+
+plt.plot(K, np.mean(mae_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
 plt.plot(K, np.mean(mae_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
 plt.plot(K, np.mean(mae_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
 plt.plot(K, np.mean(mae_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
@@ -177,12 +184,12 @@ plt.xlabel("Nr. of neighbors")
 plt.ylabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.show()"""
+plt.show()
 
-#plt.plot(np.mean(mae_1, axis=0), np.mean(outdegrees_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
-#plt.plot(np.mean(mae_3, axis=0), np.mean(outdegrees_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
-#plt.plot(np.mean(mae_5, axis=0), np.mean(outdegrees_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
-#plt.plot(np.mean(mae_2, axis=0), np.mean(outdegrees_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
+plt.plot(np.mean(mae_1, axis=0), np.mean(outdegrees_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
+plt.plot(np.mean(mae_3, axis=0), np.mean(outdegrees_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
+plt.plot(np.mean(mae_5, axis=0), np.mean(outdegrees_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
+plt.plot(np.mean(mae_2, axis=0), np.mean(outdegrees_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
 plt.plot(np.mean(mae_4, axis=0), np.mean(outdegrees_4, axis=0), color="C1", linestyle="solid", label="Popularity + Reuse")
 plt.plot(np.mean(mae_6, axis=0), np.mean(outdegrees_6, axis=0), color="C2", linestyle="solid", label="Gain + Reuse")
 plt.ylabel("Outdegree")

@@ -4,6 +4,7 @@ import heapq
 from collections import defaultdict, Counter
 import networkx as nx
 import pandas as pd
+from graph_analysis import Graph
 
 class PredictionImpossible(Exception):
     pass
@@ -30,50 +31,66 @@ class UserKNN:
     def fit(self, trainset):
         self.trainset = trainset
 
-        if self.precomputed_sim is None:
+        if self.precomputed_sim is None and 1 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4 > 0:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
         else:
-            self.sim = self.precomputed_sim.copy()
+            self.sim = self.precomputed_sim.copy() if self.precomputed_sim is not None else None
 
-        if self.precomputed_pop is None:
+        if self.precomputed_pop is None and self.tau_1 > 0:
             self.pop = self.compute_popularities(self.trainset)
         else:
-            self.pop = self.precomputed_pop.copy()
+            self.pop = self.precomputed_pop.copy() if self.precomputed_pop is not None else None
 
-        if self.precomputed_act is None:
+        if self.precomputed_act is None and self.tau_2 > 0:
             self.act = self.compute_activities(self.trainset)
         else:
-            self.act = self.precomputed_act.copy()
+            self.act = self.precomputed_act.copy() if self.precomputed_act is not None else None
 
-        if self.precomputed_rr is None:
+        if self.precomputed_rr is None and self.tau_3 > 0:
             self.rr = self.compute_rr(self.trainset)
         else:
-            self.rr = self.precomputed_rr.copy()
+            self.rr = self.precomputed_rr.copy() if self.precomputed_rr is not None else None
 
-        if self.precomputed_gain is None:
+        if self.precomputed_gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
         else:
-            self.gain = self.precomputed_gain.copy()
+            self.gain = self.precomputed_gain.copy() if self.precomputed_gain is not None else None
 
         self.ranking = dict()
 
         # Tradeoff
         for u in self.trainset.all_users():
-            simrank = {v: k for k, v in dict(enumerate(np.argsort(self.sim[u, :]))).items()}
-            #poprank = {v: k for k, v in dict(enumerate(np.argsort(self.pop))).items()}
-            poprank = {v: k for k, v in dict(enumerate(np.argsort(self.pop[u, :]))).items()}
-            actrank = {v: k for k, v in dict(enumerate(np.argsort(self.act))).items()}
-            rrrank = {v: k for k, v in dict(enumerate(np.argsort(self.rr))).items()}
-            gainrank = {v: k for k, v in dict(enumerate(np.argsort(self.gain[u, :]))).items()}
+            if self.sim is not None:
+                simrank = {v: k for k, v in dict(enumerate(np.argsort(self.sim[u, :]))).items()}
+            if self.pop is not None:
+                poprank = {v: k for k, v in dict(enumerate(np.argsort(self.pop))).items()}
+            if self.act is not None:
+                actrank = {v: k for k, v in dict(enumerate(np.argsort(self.act))).items()}
+            if self.rr is not None:
+                rrrank = {v: k for k, v in dict(enumerate(np.argsort(self.rr))).items()}
+            if self.gain is not None:
+                gainrank = {v: k for k, v in dict(enumerate(np.argsort(self.gain[u, :]))).items()}
 
             ranking_u = dict()
             for u_ in self.trainset.all_users():
                 if u_ != u:
-                    ranking_u[u_] = self.tau_1 * actrank[u_] + \
+                    ranking_u[u_] = 0
+                    if self.act is not None:
+                        ranking_u[u_] += self.tau_1 * actrank[u_]
+                    if self.pop is not None:
+                        ranking_u[u_] += self.tau_2 * poprank[u_]
+                    if self.rr is not None:
+                        ranking_u[u_] += self.tau_3 * rrrank[u_]
+                    if self.gain is not None:
+                        ranking_u[u_] += self.tau_4 * gainrank[u_]
+                    if self.sim is not None:
+                        ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
+                    """ranking_u[u_] = self.tau_1 * actrank[u_] + \
                                     self.tau_2 * poprank[u_] + \
                                     self.tau_3 * rrrank[u_] + \
                                     self.tau_4 * gainrank[u_] + \
-                                    (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
+                                    (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]"""
+
             self.ranking[u] = ranking_u
         return self
 
@@ -86,9 +103,6 @@ class UserKNN:
         ranks = self.ranking[u]
         possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in self.trainset.ir[i]]
         possible_mentors_data = sorted(possible_mentors_data, key=lambda t: t[2])[::-1]
-
-        possible_mentors_act = sorted([(u_, self.act[u_]) for u_ in possible_mentors], key=lambda t: t[1])[::-1]
-        possible_mentors_actrank = {v: k for k, v in dict(enumerate([u_ for u_, _ in possible_mentors_act])).items()}
 
         if self.random_neighbors:
             mentors = np.random.choice(list(possible_mentors), replace=False, size=min(self.k, len(possible_mentors)))
@@ -103,6 +117,7 @@ class UserKNN:
 
             n_new_mentors = self.k - len(already_mentors) if self.k > len(already_mentors) else 0
             new_mentors = []
+
             for u_, _, _, _ in possible_mentors_data:
                 if len(new_mentors) >= n_new_mentors:
                     break
@@ -129,6 +144,7 @@ class UserKNN:
                 sum_sim += sim
                 sum_ratings += sim * r
                 actual_k += 1
+
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -242,7 +258,7 @@ class UserKNN:
 
     @staticmethod
     def compute_popularities(trainset):
-        """item_popularities = np.zeros(trainset.n_items)
+        item_popularities = np.zeros(trainset.n_items)
         for i, ratings in trainset.ir.items():
             item_popularities[i] = float(len(ratings)) / trainset.n_users
 
@@ -252,21 +268,7 @@ class UserKNN:
             for i, _ in ratings:
                 acc_rp += item_popularities[i]
             reuse_potential[u] = acc_rp
-        return reuse_potential"""
-        knowledge = defaultdict(list)
-        for uid, ratings in trainset.ur.items():
-            knowledge[uid].extend([iid for iid, _ in ratings])
-
-        gain = np.zeros((trainset.n_users, trainset.n_users))
-        for mentor in trainset.all_users():
-            for student in trainset.all_users():
-                n_queries = len(knowledge[student])
-                if n_queries > 0:
-                    g = float(len(set(knowledge[mentor]).intersection(knowledge[student]))) / len(knowledge[student])
-                else:
-                    g = 0.0
-                gain[student, mentor] = g
-        return gain
+        return reuse_potential
 
     @staticmethod
     def compute_rr(trainset, function=None):
@@ -314,7 +316,7 @@ class UserKNN:
 
     @property
     def trust_graph(self):
-        G = nx.Graph()
+        G = nx.DiGraph()
         G.add_nodes_from(self.trainset.all_users())
         for u, students in self.students.items():
             for s in students:
@@ -323,39 +325,15 @@ class UserKNN:
         return G
 
     def get_degree(self):
-        G = self.trust_graph
-        degree_counter = Counter(list(dict(nx.degree(G)).values()))
-        P_degrees = {d: float(degree_counter[d]) / G.number_of_nodes() for d in degree_counter.keys()}
-        return np.mean([d * p for d, p in P_degrees.items()])
+        G = Graph(self.trust_graph)
+        z1 = G.prime_0(1)
+
+        return z1
 
     def get_path_length(self):
-        G = self.trust_graph
-        z1 = np.mean(list(dict(nx.degree(G)).values()))
-        n_second_neighbors = []
-        for v in G.nodes():
-            N_v = G.neighbors(v)
-            N_of_N = set()
-            for n in N_v:
-                N_of_N = N_of_N.union(set(G.neighbors(n)))
-
-            n_second_neighbors.append(len(N_of_N))
-        z2 = np.mean(n_second_neighbors)
-
-        N = G.number_of_nodes()
-        l = (np.log((N - 1) * (z2 - z1) + np.power(z1, 2)) - np.log(np.power(z1, 2))) / np.log(z2 / z1)
+        G = Graph(self.trust_graph)
+        z1 = G.prime_0(1)
+        z2 = G.primeprime_0(1)
+        l = (np.log((G.n_nodes - 1) * (z2 - z1) + np.power(z1, 2)) - np.log(np.power(z1, 2))) / np.log(z2 / z1)
 
         return l
-
-    def get_betweenness_centrality(self):
-        G = self.trust_graph
-        if nx.is_connected(G):
-            return np.mean([c for _, c in dict(nx.algorithms.centrality.betweenness_centrality(G)).items()])
-        else:
-            return 0
-
-    def get_current_flow_betweenness_centrality(self):
-        G = self.trust_graph
-        if nx.is_connected(G):
-            return np.mean([c for _, c in dict(nx.algorithms.centrality.current_flow_betweenness_centrality(G)).items()])
-        else:
-            return 0
