@@ -1,10 +1,10 @@
 cimport numpy as np
+from numpy cimport ndarray
 import numpy as np
 import heapq
 from collections import defaultdict, Counter
 import networkx as nx
-import pandas as pd
-from graph_analysis import Graph
+from networkx.algorithms.shortest_paths.generic import shortest_path_length, average_shortest_path_length
 
 class PredictionImpossible(Exception):
     pass
@@ -16,6 +16,8 @@ class UserKNN:
         self.min_k = min_k
         self.mentors = defaultdict(set)
         self.students = defaultdict(set)
+        self.n_queries_from = defaultdict(dict)
+        self.n_queries_to = defaultdict(dict)
         self.reuse_neighbors = reuse
         self.tau_1 = tau_1
         self.tau_2 = tau_2
@@ -36,15 +38,15 @@ class UserKNN:
         else:
             self.sim = self.precomputed_sim.copy() if self.precomputed_sim is not None else None
 
-        if self.precomputed_pop is None and self.tau_1 > 0:
-            self.pop = self.compute_popularities(self.trainset)
-        else:
-            self.pop = self.precomputed_pop.copy() if self.precomputed_pop is not None else None
-
-        if self.precomputed_act is None and self.tau_2 > 0:
+        if self.precomputed_act is None and self.tau_1 > 0:
             self.act = self.compute_activities(self.trainset)
         else:
             self.act = self.precomputed_act.copy() if self.precomputed_act is not None else None
+
+        if self.precomputed_pop is None and self.tau_2 > 0:
+            self.pop = self.compute_popularities(self.trainset)
+        else:
+            self.pop = self.precomputed_pop.copy() if self.precomputed_pop is not None else None
 
         if self.precomputed_rr is None and self.tau_3 > 0:
             self.rr = self.compute_rr(self.trainset)
@@ -85,11 +87,6 @@ class UserKNN:
                         ranking_u[u_] += self.tau_4 * gainrank[u_]
                     if self.sim is not None:
                         ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
-                    """ranking_u[u_] = self.tau_1 * actrank[u_] + \
-                                    self.tau_2 * poprank[u_] + \
-                                    self.tau_3 * rrrank[u_] + \
-                                    self.tau_4 * gainrank[u_] + \
-                                    (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]"""
 
             self.ranking[u] = ranking_u
         return self
@@ -109,7 +106,7 @@ class UserKNN:
             self.mentors[u] = self.mentors[u].union(set(mentors))
             for m in mentors:
                 self.students[m] = self.students[m].union({u})
-            neighbors = [(s, rank, r) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
+            neighbors = [(s, rank, r, u_) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
             k_neighbors = heapq.nlargest(self.k, neighbors, key=lambda t: t[0])
 
         if self.reuse_neighbors:
@@ -128,23 +125,26 @@ class UserKNN:
             new_mentors = set(new_mentors)
 
             mentors = new_mentors.union(already_mentors)
-            neighbors = [(s, rank, r) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
+            neighbors = [(s, rank, r, u_) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
             k_neighbors = heapq.nlargest(self.k, neighbors, key=lambda t: t[0])
         else:
             k_neighbors = heapq.nlargest(self.k, possible_mentors_data, key=lambda t: t[2])
             self.mentors[u] = self.mentors[u].union(set(u_ for u_, _, _, _  in k_neighbors))
             for u_, _, _, _ in k_neighbors:
                 self.students[u_] = self.students[u_].union({u})
-            k_neighbors = [(s, rank, r) for _, s, rank, r in k_neighbors]
+            k_neighbors = [(s, rank, r, u_) for _, s, rank, r in k_neighbors]
+
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
-        for (sim, _, r) in k_neighbors:
+        for (sim, _, r, u_) in k_neighbors:
             if sim > 0:
                 sum_sim += sim
                 sum_ratings += sim * r
                 actual_k += 1
 
+            self.n_queries_from[u][u_] = self.n_queries_from[u].get(u_, 0) + 1
+            self.n_queries_to[u_][u] = self.n_queries_to[u_].get(u, 0) + 1
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -202,10 +202,9 @@ class UserKNN:
         return self.trainset.global_mean
 
     @staticmethod
-    def compute_similarities(trainset, min_support):
+    def _cosine(trainset, min_support):
         n_users = trainset.n_users
         ir = trainset.ir
-
         # sum (r_xy * r_x'y) for common ys
         cdef np.ndarray[np.double_t, ndim=2] prods
         # number of common ys
@@ -245,6 +244,54 @@ class UserKNN:
                     sim[xi, xj] = prods[xi, xj] / denum
 
                 sim[xj, xi] = sim[xi, xj]
+
+        return sim
+
+    @staticmethod
+    def _jaccard(trainset, min_support):
+        n_users = trainset.n_users
+        ir = trainset.ir
+
+        # |r_x and r_y|
+        cdef np.ndarray[np.double_t, ndim=2] overlap_size
+        # |r_x or r_y|
+        cdef np.ndarray[np.double_t, ndim=1] profile_size
+        # the similarity matrix
+        cdef np.ndarray[np.double_t, ndim=2] sim
+
+        cdef int xi, xj
+        cdef int min_sprt = min_support
+
+        overlap_size = np.zeros((n_users, n_users), np.double)
+        profile_size = np.zeros(n_users, np.double)
+        sim = np.zeros((n_users, n_users), np.double)
+
+        for _, y_ratings in ir.items():
+            for xi, _ in y_ratings:
+                profile_size[xi] += 1
+                for xj, _ in y_ratings:
+                    overlap_size[xi, xj] += 1
+
+        for xi in range(n_users):
+            sim[xi, xi] = 1
+            for xj in range(xi + 1, n_users):
+                if overlap_size[xi, xj] < min_sprt:
+                    sim[xi, xj] = 0
+                else:
+                    sim[xi, xj] = overlap_size[xi, xj] / (profile_size[xi] + profile_size[xj])
+
+                sim[xj, xi] = sim[xi, xj]
+
+        return sim
+
+    @staticmethod
+    def compute_similarities(trainset, min_support, kind="cosine"):
+        if kind == "cosine":
+            sim = UserKNN._cosine(trainset, min_support)
+        elif kind=="jaccard":
+            sim = UserKNN._jaccard(trainset, min_support)
+        else:
+            sim = None
 
         return sim
 
@@ -325,15 +372,20 @@ class UserKNN:
         return G
 
     def get_degree(self):
-        G = Graph(self.trust_graph)
-        z1 = G.prime_0(1)
+        G = self.trust_graph
+        avg_degree = np.mean([deg for _, deg in G.out_degree()])
 
-        return z1
+        return avg_degree
+
 
     def get_path_length(self):
-        G = Graph(self.trust_graph)
-        z1 = G.prime_0(1)
-        z2 = G.primeprime_0(1)
-        l = (np.log((G.n_nodes - 1) * (z2 - z1) + np.power(z1, 2)) - np.log(np.power(z1, 2))) / np.log(z2 / z1)
+        G = self.trust_graph
+        path_lengths = []
+        for s in G.nodes():
+            for t in G.nodes():
+                if nx.has_path(G, source=s, target=t):
+                    l = shortest_path_length(G, source=s, target=t)
+                    path_lengths.append(l)
+        avg_path_length = np.mean(path_lengths)
 
-        return l
+        return avg_path_length
