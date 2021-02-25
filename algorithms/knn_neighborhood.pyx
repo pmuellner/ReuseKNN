@@ -23,40 +23,35 @@ class UserKNN:
         self.tau_2 = tau_2
         self.tau_3 = tau_3
         self.tau_4 = tau_4
-        self.precomputed_sim = precomputed_sim
-        self.precomputed_pop = precomputed_pop
-        self.precomputed_act = precomputed_act
-        self.precomputed_rr = precomputed_rr
-        self.precomputed_gain = precomputed_gain
+        self.sim = precomputed_sim.copy() if precomputed_sim is not None else None
+        self.pop = precomputed_pop.copy() if precomputed_pop is not None else None
+        self.act = precomputed_act.copy() if precomputed_act is not None else None
+        self.rr = precomputed_rr.copy() if precomputed_rr is not None else None
+        self.gain = precomputed_gain.copy() if precomputed_gain is not None else None
+        #self.sim = precomputed_sim
+        #self.pop = precomputed_pop
+        #self.act = precomputed_act
+        #self.rr = precomputed_rr
+        #self.gain = precomputed_gain
         self.random_neighbors = random
 
     def fit(self, trainset):
         self.trainset = trainset
 
-        if self.precomputed_sim is None and 1 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4 > 0:
+        if self.sim is None and 1 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4 > 0:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
-        else:
-            self.sim = self.precomputed_sim.copy() if self.precomputed_sim is not None else None
 
-        if self.precomputed_act is None and self.tau_1 > 0:
+        if self.act is None and self.tau_1 > 0:
             self.act = self.compute_activities(self.trainset)
-        else:
-            self.act = self.precomputed_act.copy() if self.precomputed_act is not None else None
 
-        if self.precomputed_pop is None and self.tau_2 > 0:
+        if self.pop is None and self.tau_2 > 0:
             self.pop = self.compute_popularities(self.trainset)
-        else:
-            self.pop = self.precomputed_pop.copy() if self.precomputed_pop is not None else None
 
-        if self.precomputed_rr is None and self.tau_3 > 0:
+        if self.rr is None and self.tau_3 > 0:
             self.rr = self.compute_rr(self.trainset)
-        else:
-            self.rr = self.precomputed_rr.copy() if self.precomputed_rr is not None else None
 
-        if self.precomputed_gain is None and self.tau_4 > 0:
+        if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
-        else:
-            self.gain = self.precomputed_gain.copy() if self.precomputed_gain is not None else None
 
         self.ranking = dict()
 
@@ -89,6 +84,7 @@ class UserKNN:
                         ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
 
             self.ranking[u] = ranking_u
+
         return self
 
     def estimate(self, u, i):

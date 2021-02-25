@@ -13,6 +13,9 @@ from scipy.stats import skew
 from networkx.algorithms.approximation.clustering_coefficient import average_clustering
 from networkx import Graph
 import threading, queue
+import os
+import psutil
+import gc
 
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
@@ -41,6 +44,7 @@ def run(trainset, testset, K, configuration={}):
         predictions = model.test(testset)
         results["models"].append(model)
         results["predictions"].append(predictions)
+
     print("Training finished after " + str(dt.now() - t0))
 
     return results["models"], results["predictions"]
@@ -73,12 +77,18 @@ def eval_network(models, measurements=[]):
 
     return results
 
-#data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
+data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
 #data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", header=None)
-#data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
-#data_df.drop(columns=["timestamp"], axis=1, inplace=True)
-data_df = pd.read_csv("data/bx_sample.csv", sep=";")
+data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
+data_df.drop(columns=["timestamp"], axis=1, inplace=True)
+"""data_df = pd.read_csv("data/anime_small.csv", sep=";")
 data_df.columns = ["user_id", "item_id", "rating"]
+
+n_users = data_df["user_id"].nunique()
+print(n_users)
+sample = np.random.choice(data_df["user_id"].unique(), size=int(n_users * 0.01), replace=False)
+data_df = data_df[data_df["user_id"].isin(sample)]
+print(data_df["user_id"].nunique())"""
 
 data_df["user_id"] = data_df["user_id"].map({b: a for a, b in enumerate(data_df["user_id"].unique())})
 data_df["item_id"] = data_df["item_id"].map({b: a for a, b in enumerate(data_df["item_id"].unique())})
@@ -88,8 +98,8 @@ reader = Reader(rating_scale=(1, 5))
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
+K = np.arange(1, 10, 2)
 #K = np.arange(1, 30, 2)
-K = np.arange(1, 30, 2)
 
 mae_1, outdegrees_1, pathlength_1, skew_1 = [], [], [], []
 mae_2, outdegrees_2, pathlength_2, skew_2 = [], [], [], []
@@ -99,15 +109,11 @@ mae_5, outdegrees_5, pathlength_5, skew_5 = [], [], [], []
 mae_6, outdegrees_6, pathlength_6, skew_6 = [], [], [], []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1)
-    act = UserKNN.compute_activities(trainset)
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
 
-
     # KNN
-    models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim,
-                                                                     "precomputed_act": act, "precomputed_pop": pop,
-                                                                     "precomputed_gain": gain})
+    models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_1.append(resratings["mae"])
@@ -115,9 +121,7 @@ for trainset, testset in folds.split(dataset):
     skew_1.append(resnetwork["skew"])
 
     # KNN + reuse
-    models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim,
-                                                                     "precomputed_act": act, "precomputed_pop": pop,
-                                                                     "precomputed_gain": gain})
+    models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_2.append(resratings["mae"])
@@ -126,8 +130,8 @@ for trainset, testset in folds.split(dataset):
 
     # Popularity
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_2": 0.5,
-                                                                     "precomputed_sim": sim, "precomputed_act": act,
-                                                                     "precomputed_pop": pop, "precomputed_gain": gain})
+                                                                     "precomputed_sim": sim,
+                                                                     "precomputed_pop": pop})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_3.append(resratings["mae"])
@@ -136,8 +140,8 @@ for trainset, testset in folds.split(dataset):
 
     # Popularity + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_2": 0.5,
-                                                                     "precomputed_sim": sim, "precomputed_act": act,
-                                                                     "precomputed_pop": pop, "precomputed_gain": gain})
+                                                                     "precomputed_sim": sim,
+                                                                     "precomputed_pop": pop})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_4.append(resratings["mae"])
@@ -146,8 +150,8 @@ for trainset, testset in folds.split(dataset):
 
     # Gain
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_4": 0.5,
-                                                                     "precomputed_sim": sim, "precomputed_act": act,
-                                                                     "precomputed_pop": pop, "precomputed_gain": gain})
+                                                                     "precomputed_sim": sim,
+                                                                     "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_5.append(resratings["mae"])
@@ -156,14 +160,20 @@ for trainset, testset in folds.split(dataset):
 
     # Gain + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_4": 0.5,
-                                                                     "precomputed_sim": sim, "precomputed_act": act,
-                                                                     "precomputed_pop": pop, "precomputed_gain": gain})
+                                                                     "precomputed_sim": sim,
+                                                                     "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
     resnetwork = eval_network(models, measurements=["outdegree", "skew"])
     mae_6.append(resratings["mae"])
     outdegrees_6.append(resnetwork["outdegree"])
     skew_6.append(resnetwork["skew"])
 
+    del models
+    del predictions
+    gc.collect()
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
 """
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
@@ -179,7 +189,8 @@ plt.xlabel("Nr. of neighbors")
 plt.ylabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.savefig("plots/ml-100k/k_vs_mae.png", dpi=300)
+plt.show()
+#plt.savefig("plots/ml-1m/k_vs_mae.png", dpi=300)
 
 plt.figure()
 plt.plot(np.mean(mae_1, axis=0), np.mean(outdegrees_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
@@ -192,7 +203,8 @@ plt.ylabel("Outdegree")
 plt.xlabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.savefig("plots/ml-100k/outdegree_vs_mae.png", dpi=300)
+plt.show()
+#plt.savefig("plots/ml-1m/outdegree_vs_mae.png", dpi=300)
 
 """plt.plot(np.mean(mae_1, axis=0), np.mean(pathlength_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
 plt.plot(np.mean(mae_3, axis=0), np.mean(pathlength_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
@@ -217,7 +229,8 @@ plt.ylabel("Skewness of the ratio distribution")
 plt.xlabel("Nr. of neighbors")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.savefig("plots/ml-100k/skew_vs_k.png", dpi=300)
+plt.show()
+#plt.savefig("plots/ml-1m/skew_vs_k.png", dpi=300)
 
 
 

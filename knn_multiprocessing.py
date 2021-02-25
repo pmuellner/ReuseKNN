@@ -13,7 +13,7 @@ from scipy.stats import skew
 from networkx.algorithms.approximation.clustering_coefficient import average_clustering
 from networkx import Graph
 import multiprocessing as mp
-from multiprocessing import Pool
+from multiprocessing import Pool, Process
 
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
@@ -97,17 +97,49 @@ def gain(trainset, testset, K, reuse, tau_4, sim, gain):
 
     return resratings["mae"], resnetwork["outdegree"], resnetwork["skew"]
 
-if __name__ == '__main__':
+mae_1, outdegrees_1, skew_1 = [], [], []
+mae_2, outdegrees_2, skew_2 = [], [], []
+mae_3, outdegrees_3, skew_3 = [], [], []
+mae_4, outdegrees_4, skew_4 = [], [], []
+mae_5, outdegrees_5, skew_5 = [], [], []
+mae_6, outdegrees_6, skew_6 = [], [], []
+def save_results(identifier, mae, deg, skew):
+    if identifier == 1:
+        mae_1.append(mae)
+        outdegrees_1.append(deg)
+        skew_1.append(skew)
+    elif identifier == 2:
+        mae_2.append(mae)
+        outdegrees_2.append(deg)
+        skew_2.append(skew)
+    elif identifier == 3:
+        mae_3.append(mae)
+        outdegrees_3.append(deg)
+        skew_3.append(skew)
+    elif identifier == 4:
+        mae_4.append(mae)
+        outdegrees_4.append(deg)
+        skew_4.append(skew)
+    elif identifier == 5:
+        mae_5.append(mae)
+        outdegrees_5.append(deg)
+        skew_5.append(skew)
+    elif identifier == 6:
+        mae_6.append(mae)
+        outdegrees_6.append(deg)
+        skew_6.append(skew)
+
+if __name__ == "__main__":
     #data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", header=None)
     #data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
     #data_df.drop(columns=["timestamp"], axis=1, inplace=True)
 
-    #data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
-    #data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
-    #data_df.drop(columns=["timestamp"], axis=1, inplace=True)
+    data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
+    data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
+    data_df.drop(columns=["timestamp"], axis=1, inplace=True)
 
-    data_df = pd.read_csv("data/bx_sample.csv", sep=";")
-    data_df.columns = ["user_id", "item_id", "rating"]
+    #data_df = pd.read_csv("data/bx_sample.csv", sep=";")
+    #data_df.columns = ["user_id", "item_id", "rating"]
 
     data_df["user_id"] = data_df["user_id"].map({b: a for a, b in enumerate(data_df["user_id"].unique())})
     data_df["item_id"] = data_df["item_id"].map({b: a for a, b in enumerate(data_df["item_id"].unique())})
@@ -118,61 +150,31 @@ if __name__ == '__main__':
     folds = KFold(n_splits=5)
 
     K = np.arange(1, 30, 2)
-    mae_1, outdegrees_1, skew_1 = [], [], []
-    mae_2, outdegrees_2, skew_2 = [], [], []
-    mae_3, outdegrees_3, skew_3 = [], [], []
-    mae_4, outdegrees_4, skew_4 = [], [], []
-    mae_5, outdegrees_5, skew_5 = [], [], []
-    mae_6, outdegrees_6, skew_6 = [], [], []
     for trainset, testset in folds.split(dataset):
+        S = UserKNN.compute_similarities(trainset, min_support=1)
+        P = UserKNN.compute_popularities(trainset)
+        G = UserKNN.compute_gain(trainset)
+
         used_cores = int(mp.cpu_count() * 0.5)
-        print("Used %d/%d cores" % (used_cores, mp.cpu_count()))
+        print("Usage of %d/%d cores" % (used_cores, mp.cpu_count()))
         with Pool(processes=used_cores) as pool:
-            s = dt.now()
-            S = UserKNN.compute_similarities(trainset, min_support=1)
-            P = UserKNN.compute_popularities(trainset)
-            G = UserKNN.compute_gain(trainset)
+            results_knn = pool.apply_async(knn, (trainset, testset, K, False, S),
+                                           callback=lambda res: save_results(1, *res))
+            results_knn_reuse = pool.apply_async(knn, (trainset, testset, K, True, S),
+                                           callback=lambda res: save_results(2, *res))
 
-            results_knn = pool.apply_async(knn, (trainset, testset, K, False, S))
-            results_knn_reuse = pool.apply_async(knn, (trainset, testset, K, True, S))
+            results_pop = pool.apply_async(popularity, (trainset, testset, K, False, 0.5, S, P),
+                                           callback=lambda res: save_results(3, *res))
+            results_pop_reuse = pool.apply_async(popularity, (trainset, testset, K, True, 0.5, S, P),
+                                           callback=lambda res: save_results(4, *res))
 
-            results_pop = pool.apply_async(popularity, (trainset, testset, K, False, 0.5, S, P))
-            results_pop_reuse = pool.apply_async(popularity, (trainset, testset, K, True, 0.5, S, P))
+            results_gain = pool.apply_async(gain, (trainset, testset, K, False, 0.5, S, G),
+                                           callback=lambda res: save_results(5, *res))
+            results_gain_reuse = pool.apply_async(gain, (trainset, testset, K, True, 0.5, S, G),
+                                           callback=lambda res: save_results(6, *res))
 
-            results_gain = pool.apply_async(gain, (trainset, testset, K, False, 0.5, S, G))
-            results_gain_reuse = pool.apply_async(gain, (trainset, testset, K, True, 0.5, S, G))
-
-            mae1, deg1, skew1 = results_knn.get()
-            mae_1.append(mae1)
-            outdegrees_1.append(deg1)
-            skew_1.append(skew1)
-
-            mae2, deg2, skew2 = results_knn_reuse.get()
-            mae_2.append(mae2)
-            outdegrees_2.append(deg2)
-            skew_2.append(skew2)
-
-            mae3, deg3, skew3 = results_pop.get()
-            mae_3.append(mae3)
-            outdegrees_3.append(deg3)
-            skew_3.append(skew3)
-
-            mae4, deg4, skew4 = results_pop_reuse.get()
-            mae_4.append(mae4)
-            outdegrees_4.append(deg4)
-            skew_4.append(skew4)
-
-            mae5, deg5, skew5 = results_gain.get()
-            mae_5.append(mae5)
-            outdegrees_5.append(deg5)
-            skew_5.append(skew5)
-
-            mae6, deg6, skew6 = results_gain_reuse.get()
-            mae_6.append(mae6)
-            outdegrees_6.append(deg6)
-            skew_6.append(skew6)
-
-            break
+            pool.close()
+            pool.join()
 
     plt.figure()
     plt.plot(K, np.mean(mae_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
