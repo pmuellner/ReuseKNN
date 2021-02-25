@@ -81,14 +81,14 @@ data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
 #data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", header=None)
 data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
 data_df.drop(columns=["timestamp"], axis=1, inplace=True)
-"""data_df = pd.read_csv("data/anime_small.csv", sep=";")
-data_df.columns = ["user_id", "item_id", "rating"]
+#data_df = pd.read_csv("data/anime_small.csv", sep=";")
+#data_df.columns = ["user_id", "item_id", "rating"]
 
-n_users = data_df["user_id"].nunique()
-print(n_users)
-sample = np.random.choice(data_df["user_id"].unique(), size=int(n_users * 0.01), replace=False)
-data_df = data_df[data_df["user_id"].isin(sample)]
-print(data_df["user_id"].nunique())"""
+#sample = np.random.choice(data_df["user_id"].unique(), size=10000, replace=False)
+#data_df = data_df[data_df["user_id"].isin(sample)]
+#print(data_df["user_id"].nunique(), data_df["item_id"].nunique(), len(data_df))
+
+
 
 data_df["user_id"] = data_df["user_id"].map({b: a for a, b in enumerate(data_df["user_id"].unique())})
 data_df["item_id"] = data_df["item_id"].map({b: a for a, b in enumerate(data_df["item_id"].unique())})
@@ -98,8 +98,7 @@ reader = Reader(rating_scale=(1, 5))
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
-K = np.arange(1, 10, 2)
-#K = np.arange(1, 30, 2)
+K = np.arange(1, 30, 2)
 
 mae_1, outdegrees_1, pathlength_1, skew_1 = [], [], [], []
 mae_2, outdegrees_2, pathlength_2, skew_2 = [], [], [], []
@@ -120,6 +119,10 @@ for trainset, testset in folds.split(dataset):
     outdegrees_1.append(resnetwork["outdegree"])
     skew_1.append(resnetwork["skew"])
 
+    del models
+    del predictions
+    gc.collect()
+
     # KNN + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim})
     resratings = eval_ratings(predictions, measurements=["mae"])
@@ -127,6 +130,10 @@ for trainset, testset in folds.split(dataset):
     mae_2.append(resratings["mae"])
     outdegrees_2.append(resnetwork["outdegree"])
     skew_2.append(resnetwork["skew"])
+
+    del models
+    del predictions
+    gc.collect()
 
     # Popularity
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_2": 0.5,
@@ -138,6 +145,10 @@ for trainset, testset in folds.split(dataset):
     outdegrees_3.append(resnetwork["outdegree"])
     skew_3.append(resnetwork["skew"])
 
+    del models
+    del predictions
+    gc.collect()
+
     # Popularity + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_2": 0.5,
                                                                      "precomputed_sim": sim,
@@ -148,6 +159,10 @@ for trainset, testset in folds.split(dataset):
     outdegrees_4.append(resnetwork["outdegree"])
     skew_4.append(resnetwork["skew"])
 
+    del models
+    del predictions
+    gc.collect()
+
     # Gain
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "tau_4": 0.5,
                                                                      "precomputed_sim": sim,
@@ -157,6 +172,10 @@ for trainset, testset in folds.split(dataset):
     mae_5.append(resratings["mae"])
     outdegrees_5.append(resnetwork["outdegree"])
     skew_5.append(resnetwork["skew"])
+
+    del models
+    del predictions
+    gc.collect()
 
     # Gain + reuse
     models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "tau_4": 0.5,
@@ -189,8 +208,8 @@ plt.xlabel("Nr. of neighbors")
 plt.ylabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.show()
-#plt.savefig("plots/ml-1m/k_vs_mae.png", dpi=300)
+#plt.show()
+plt.savefig("plots/ml-100k/k_vs_mae.png", dpi=300)
 
 plt.figure()
 plt.plot(np.mean(mae_1, axis=0), np.mean(outdegrees_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
@@ -203,8 +222,8 @@ plt.ylabel("Outdegree")
 plt.xlabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.show()
-#plt.savefig("plots/ml-1m/outdegree_vs_mae.png", dpi=300)
+#plt.show()
+plt.savefig("plots/ml-100k/outdegree_vs_mae.png", dpi=300)
 
 """plt.plot(np.mean(mae_1, axis=0), np.mean(pathlength_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
 plt.plot(np.mean(mae_3, axis=0), np.mean(pathlength_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
@@ -229,8 +248,8 @@ plt.ylabel("Skewness of the ratio distribution")
 plt.xlabel("Nr. of neighbors")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.show()
-#plt.savefig("plots/ml-1m/skew_vs_k.png", dpi=300)
+#plt.show()
+plt.savefig("plots/ml-100k/skew_vs_k.png", dpi=300)
 
 
 
