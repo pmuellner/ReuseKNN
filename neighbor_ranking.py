@@ -78,27 +78,22 @@ def eval_network(models, measurements=[]):
     return results
 
 data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
-#data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", header=None)
 data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
 data_df.drop(columns=["timestamp"], axis=1, inplace=True)
-#data_df = pd.read_csv("data/anime_small.csv", sep=";")
-#data_df.columns = ["user_id", "item_id", "rating"]
-
-#sample = np.random.choice(data_df["user_id"].unique(), size=10000, replace=False)
-#data_df = data_df[data_df["user_id"].isin(sample)]
-#print(data_df["user_id"].nunique(), data_df["item_id"].nunique(), len(data_df))
-
-
 
 data_df["user_id"] = data_df["user_id"].map({b: a for a, b in enumerate(data_df["user_id"].unique())})
 data_df["item_id"] = data_df["item_id"].map({b: a for a, b in enumerate(data_df["item_id"].unique())})
 n_items = data_df["item_id"].nunique()
 
+
+user_popularity = data_df.groupby("user_id").size().sort_values(ascending=False)
+user_sample = user_popularity.iloc[50:].index.values
+
 reader = Reader(rating_scale=(1, 5))
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
-K = np.arange(1, 30, 2)
+K = np.arange(1, 30, 5)
 
 mae_1, outdegrees_1, pathlength_1, skew_1 = [], [], [], []
 mae_2, outdegrees_2, pathlength_2, skew_2 = [], [], [], []
@@ -194,6 +189,32 @@ for trainset, testset in folds.split(dataset):
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
+    break
+
+"""NAME = "ciao"
+np.save("results/" + NAME + "/K.npy", K)
+
+np.save("results/" + NAME + "/mae_userknn.npy", np.mean(mae_1, axis=0))
+np.save("results/" + NAME + "/mae_pop.npy", np.mean(mae_3, axis=0))
+np.save("results/" + NAME + "/mae_gain.npy", np.mean(mae_5, axis=0))
+np.save("results/" + NAME + "/mae_userknn_reuse.npy", np.mean(mae_2, axis=0))
+np.save("results/" + NAME + "/mae_pop_reuse.npy", np.mean(mae_4, axis=0))
+np.save("results/" + NAME + "/mae_gain_reuse.npy", np.mean(mae_6, axis=0))
+
+np.save("results/" + NAME + "/deg_userknn.npy", np.mean(outdegrees_1, axis=0))
+np.save("results/" + NAME + "/deg_pop.npy", np.mean(outdegrees_3, axis=0))
+np.save("results/" + NAME + "/deg_gain.npy", np.mean(outdegrees_5, axis=0))
+np.save("results/" + NAME + "/deg_userknn_reuse.npy", np.mean(outdegrees_2, axis=0))
+np.save("results/" + NAME + "/deg_pop_reuse.npy", np.mean(outdegrees_4, axis=0))
+np.save("results/" + NAME + "/deg_gain_reuse.npy", np.mean(outdegrees_6, axis=0))
+
+np.save("results/" + NAME + "/skew_userknn.npy", np.mean(skew_1, axis=0))
+np.save("results/" + NAME + "/skew_pop.npy", np.mean(skew_3, axis=0))
+np.save("results/" + NAME + "/skew_gain.npy", np.mean(skew_5, axis=0))
+np.save("results/" + NAME + "/skew_userknn_reuse.npy", np.mean(skew_2, axis=0))
+np.save("results/" + NAME + "/skew_pop_reuse.npy", np.mean(skew_4, axis=0))
+np.save("results/" + NAME + "/skew_gain_reuse.npy", np.mean(skew_6, axis=0))"""
+
 """
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
 """
@@ -208,34 +229,20 @@ plt.xlabel("Nr. of neighbors")
 plt.ylabel("Mean absolute error")
 plt.legend(ncol=2)
 plt.tight_layout()
-#plt.show()
-plt.savefig("plots/ml-100k/k_vs_mae.png", dpi=300)
+plt.show()
 
 plt.figure()
-plt.plot(np.mean(mae_1, axis=0), np.mean(outdegrees_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
-plt.plot(np.mean(mae_3, axis=0), np.mean(outdegrees_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
-plt.plot(np.mean(mae_5, axis=0), np.mean(outdegrees_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
-plt.plot(np.mean(mae_2, axis=0), np.mean(outdegrees_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
-plt.plot(np.mean(mae_4, axis=0), np.mean(outdegrees_4, axis=0), color="C1", linestyle="solid", label="Popularity + Reuse")
-plt.plot(np.mean(mae_6, axis=0), np.mean(outdegrees_6, axis=0), color="C2", linestyle="solid", label="Gain + Reuse")
-plt.ylabel("Outdegree")
-plt.xlabel("Mean absolute error")
+plt.plot(np.mean(outdegrees_1, axis=0), np.mean(mae_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
+plt.plot(np.mean(outdegrees_3, axis=0), np.mean(mae_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
+plt.plot(np.mean(outdegrees_5, axis=0), np.mean(mae_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
+plt.plot(np.mean(outdegrees_2, axis=0), np.mean(mae_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
+plt.plot(np.mean(outdegrees_4, axis=0), np.mean(mae_4, axis=0), color="C1", linestyle="solid", label="Popularity + Reuse")
+plt.plot(np.mean(outdegrees_6, axis=0), np.mean(mae_6, axis=0), color="C2", linestyle="solid", label="Gain + Reuse")
+plt.ylabel("Mean absolute error")
+plt.xlabel("Outdegree")
 plt.legend(ncol=2)
 plt.tight_layout()
-#plt.show()
-plt.savefig("plots/ml-100k/outdegree_vs_mae.png", dpi=300)
-
-"""plt.plot(np.mean(mae_1, axis=0), np.mean(pathlength_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
-plt.plot(np.mean(mae_3, axis=0), np.mean(pathlength_3, axis=0), color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
-plt.plot(np.mean(mae_5, axis=0), np.mean(pathlength_5, axis=0), color="C2", linestyle="dashed", label="Gain", alpha=0.5)
-plt.plot(np.mean(mae_2, axis=0), np.mean(pathlength_2, axis=0), color="C0", linestyle="solid", label="UserKNN + Reuse")
-plt.plot(np.mean(mae_4, axis=0), np.mean(pathlength_4, axis=0), color="C1", linestyle="solid", label="Popularity + Reuse")
-plt.plot(np.mean(mae_6, axis=0), np.mean(pathlength_6, axis=0), color="C2", linestyle="solid", label="Gain + Reuse")
-plt.ylabel("Path Length")
-plt.xlabel("Mean absolute error")
-plt.legend(ncol=2)
-plt.tight_layout()
-plt.show()"""
+plt.show()
 
 plt.figure()
 plt.plot(K, np.mean(skew_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
@@ -248,53 +255,4 @@ plt.ylabel("Skewness of the ratio distribution")
 plt.xlabel("Nr. of neighbors")
 plt.legend(ncol=2)
 plt.tight_layout()
-#plt.show()
-plt.savefig("plots/ml-100k/skew_vs_k.png", dpi=300)
-
-
-
-
-"""ranking_functions = [cumsum, softneg, reciprocal, reciprocal_plus_1, log_reciprocal]
-for fold_it, data in enumerate(folds.split(dataset)):
-    trainset, testset = data
-    mean_absolute_errors = defaultdict(list)
-    outdegrees = defaultdict(list)
-    for function_it, f in enumerate(ranking_functions):
-        sim = UserKNN.compute_similarities(trainset, min_support=1)
-        rr = UserKNN.compute_rr(trainset, f)
-        models, predictions = run(trainset, testset, K=np.arange(1, 30, 2), configuration={"precomputed_sim": sim,
-                                                                                           "precomputed_rr": rr,
-                                                                                           "reuse": True,
-                                                                                           "tau_2": 1})
-        resratings = eval_ratings(predictions, measurements=["mae"])
-        resnetwork = eval_network(models, measurements=["outdegree"])
-
-        mean_absolute_errors[f.__name__].append(resratings["mae"])
-        outdegrees[f.__name__].append(resnetwork["outdegree"])
-
-        print("Function %d fold %d finished" % (function_it, fold_it))
-        print()
-
-    models, predictions = run(trainset, testset, K=np.arange(1, 30, 2), configuration={"reuse": True, "tau_1": 1})
-    resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(models, measurements=["outdegree"])
-    mean_absolute_errors["reuse+pop"].append(resratings["mae"])
-    outdegrees["reuse+pop"].append(resnetwork["outdegree"])
-
-    break
-
-
-for f in ranking_functions:
-    mean_mae_f = np.mean(mean_absolute_errors[f.__name__], axis=0)
-    mean_outdegree_f = np.mean(outdegrees[f.__name__], axis=0)
-    plt.plot(mean_mae_f, mean_outdegree_f, label=f.__name__, linewidth=1)
-
-mean_mae_baseline = np.mean(mean_absolute_errors["reuse+pop"], axis=0)
-mean_outdegree_baseline = np.mean(outdegrees["reuse+pop"], axis=0)
-
-plt.plot(mean_mae_baseline, mean_outdegree_baseline, label="reuse+pop", linewidth=1)
-plt.xlabel("Mean absolute error")
-plt.ylabel("Outdegree")
-plt.legend()
-plt.show()"""
-
+plt.show()

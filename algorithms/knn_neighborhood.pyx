@@ -16,8 +16,8 @@ class UserKNN:
         self.min_k = min_k
         self.mentors = defaultdict(set)
         self.students = defaultdict(set)
-        self.n_queries_from = defaultdict(dict)
-        self.n_queries_to = defaultdict(dict)
+        self.n_mentors_at_q = defaultdict(list)
+        self.n_students_at_q = defaultdict(list)
         self.reuse_neighbors = reuse
         self.tau_1 = tau_1
         self.tau_2 = tau_2
@@ -28,17 +28,12 @@ class UserKNN:
         self.act = precomputed_act.copy() if precomputed_act is not None else None
         self.rr = precomputed_rr.copy() if precomputed_rr is not None else None
         self.gain = precomputed_gain.copy() if precomputed_gain is not None else None
-        #self.sim = precomputed_sim
-        #self.pop = precomputed_pop
-        #self.act = precomputed_act
-        #self.rr = precomputed_rr
-        #self.gain = precomputed_gain
         self.random_neighbors = random
 
     def fit(self, trainset):
         self.trainset = trainset
 
-        if self.sim is None and 1 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4 > 0:
+        if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
 
         if self.act is None and self.tau_1 > 0:
@@ -130,6 +125,8 @@ class UserKNN:
                 self.students[u_] = self.students[u_].union({u})
             k_neighbors = [(s, rank, r, u_) for _, s, rank, r in k_neighbors]
 
+        n_mentors = len(self.mentors[u])
+        self.n_mentors_at_q[u].append(n_mentors)
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
@@ -139,8 +136,8 @@ class UserKNN:
                 sum_ratings += sim * r
                 actual_k += 1
 
-            self.n_queries_from[u][u_] = self.n_queries_from[u].get(u_, 0) + 1
-            self.n_queries_to[u_][u] = self.n_queries_to[u_].get(u, 0) + 1
+            #self.n_queries_from[u][u_] = self.n_queries_from[u].get(u_, 0) + 1
+            #self.n_queries_to[u_][u] = self.n_queries_to[u_].get(u, 0) + 1
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
