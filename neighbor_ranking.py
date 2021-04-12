@@ -98,12 +98,24 @@ def calculate_redistribution(base_models, models, tau=0.5, how="gini"):
         g = 0.5 * rmad
         return g
 
+    def hoover(x):
+        x = MinMaxScaler().fit_transform(np.array(x).reshape(-1, 1))
+        x_ = sorted(x)
+        H = 0.5 * np.sum([np.abs(x_[i] - np.mean(x_)) for i in range(len(x_))]) / np.sum(x_)
+        return H
+
     if how == "gini":
         ginis = []
         for b, m in zip(base_models, models):
             deltas = delta_tradeoff(b, m, lam=tau)
             ginis.append(gini(deltas))
         return ginis
+    elif how == "hoover":
+        hoovers = []
+        for b, m in zip(base_models, models):
+            deltas = delta_tradeoff(b, m, lam=tau)
+            hoovers.append(hoover(deltas))
+        return hoovers
     elif how == "skew":
         skews = []
         for b, m in zip(base_models, models):
@@ -113,29 +125,36 @@ def calculate_redistribution(base_models, models, tau=0.5, how="gini"):
     else:
         return None
 
-data_df = pd.read_csv("data/ml-100k/u.data", sep="\t")
-data_df.columns = ["user_id", "item_id", "rating", "timestamp"]
-data_df.drop(columns=["timestamp"], axis=1, inplace=True)
+NAME = "ml-100k"
+if NAME == "ml-100k":
+    data_df = pd.read_csv("data/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+    reader = Reader(rating_scale=(1, 5))
+elif NAME == "ml-1m":
+    data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+    reader = Reader(rating_scale=(1, 5))
+elif NAME == "goodreads":
+    data_df = pd.read_csv("data/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
+    reader = Reader(rating_scale=(0, 5))
+elif NAME == "jester":
+    data_df = pd.read_csv("data/jester/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
+    reader = Reader(rating_scale=(-10, 10))
+else:
+    print("error")
+    data_df = pd.DataFrame()
+    reader = Reader()
 
-#data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
-#data_df = pd.read_csv("data/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
 
-#data_df["user_id"] = data_df["user_id"].map({b: a for a, b in enumerate(data_df["user_id"].unique())})
-#data_df["item_id"] = data_df["item_id"].map({b: a for a, b in enumerate(data_df["item_id"].unique())})
-n_items = data_df["item_id"].nunique()
-
-reader = Reader(rating_scale=(1, 5))
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
-K = np.arange(1, 30, 5)
+K = np.arange(1, 30, 1)
 
-mae_1, outdegrees_1, pathlength_1, skew_1, gini_1 = [], [], [], [], []
-mae_2, outdegrees_2, pathlength_2, skew_2, gini_2 = [], [], [], [], []
-mae_3, outdegrees_3, pathlength_3, skew_3, gini_3 = [], [], [], [], []
-mae_4, outdegrees_4, pathlength_4, skew_4, gini_4 = [], [], [], [], []
-mae_5, outdegrees_5, pathlength_5, skew_5, gini_5 = [], [], [], [], []
-mae_6, outdegrees_6, pathlength_6, skew_6, gini_6 = [], [], [], [], []
+mae_1, outdegrees_1, pathlength_1, skew_1, gini_1, hoover_1 = [], [], [], [], [], []
+mae_2, outdegrees_2, pathlength_2, skew_2, gini_2, hoover_2 = [], [], [], [], [], []
+mae_3, outdegrees_3, pathlength_3, skew_3, gini_3, hoover_3 = [], [], [], [], [], []
+mae_4, outdegrees_4, pathlength_4, skew_4, gini_4, hoover_4 = [], [], [], [], [], []
+mae_5, outdegrees_5, pathlength_5, skew_5, gini_5, hoover_5 = [], [], [], [], [], []
+mae_6, outdegrees_6, pathlength_6, skew_6, gini_6, hoover_6 = [], [], [], [], [], []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1)
     pop = UserKNN.compute_popularities(trainset)
@@ -144,7 +163,7 @@ for trainset, testset in folds.split(dataset):
     # KNN
     userknn_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(userknn_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(userknn_models, measurements=["outdegree"])
     mae_1.append(resratings["mae"])
     outdegrees_1.append(resnetwork["outdegree"])
 
@@ -154,11 +173,12 @@ for trainset, testset in folds.split(dataset):
     # KNN + reuse
     userknn_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(userknn_reuse_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(userknn_reuse_models, measurements=["outdegree"])
     mae_2.append(resratings["mae"])
     outdegrees_2.append(resnetwork["outdegree"])
     gini_2.append(calculate_redistribution(userknn_models, userknn_reuse_models, how="gini"))
     skew_2.append(calculate_redistribution(userknn_models, userknn_reuse_models, how="skew"))
+    hoover_2.append(calculate_redistribution(userknn_models, userknn_reuse_models, how="hoover"))
 
     del userknn_reuse_models
     del predictions
@@ -169,11 +189,12 @@ for trainset, testset in folds.split(dataset):
                                                                      "precomputed_sim": sim,
                                                                      "precomputed_pop": pop})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(popularity_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(popularity_models, measurements=["outdegree"])
     mae_3.append(resratings["mae"])
     outdegrees_3.append(resnetwork["outdegree"])
     gini_3.append(calculate_redistribution(userknn_models, popularity_models, how="gini"))
     skew_3.append(calculate_redistribution(userknn_models, popularity_models, how="skew"))
+    hoover_3.append(calculate_redistribution(userknn_models, popularity_models, how="hoover"))
 
     del popularity_models
     del predictions
@@ -184,11 +205,12 @@ for trainset, testset in folds.split(dataset):
                                                                      "precomputed_sim": sim,
                                                                      "precomputed_pop": pop})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(popularity_reuse_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(popularity_reuse_models, measurements=["outdegree"])
     mae_4.append(resratings["mae"])
     outdegrees_4.append(resnetwork["outdegree"])
     gini_4.append(calculate_redistribution(userknn_models, popularity_reuse_models, how="gini"))
     skew_4.append(calculate_redistribution(userknn_models, popularity_reuse_models, how="skew"))
+    hoover_4.append(calculate_redistribution(userknn_models, popularity_reuse_models, how="hoover"))
 
     del popularity_reuse_models
     del predictions
@@ -199,11 +221,12 @@ for trainset, testset in folds.split(dataset):
                                                                      "precomputed_sim": sim,
                                                                      "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(gain_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(gain_models, measurements=["outdegree"])
     mae_5.append(resratings["mae"])
     outdegrees_5.append(resnetwork["outdegree"])
     gini_5.append(calculate_redistribution(userknn_models, gain_models, how="gini"))
     skew_5.append(calculate_redistribution(userknn_models, gain_models, how="skew"))
+    hoover_5.append(calculate_redistribution(userknn_models, gain_models, how="hoover"))
 
     del gain_models
     del predictions
@@ -214,11 +237,12 @@ for trainset, testset in folds.split(dataset):
                                                                      "precomputed_sim": sim,
                                                                      "precomputed_gain": gain})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(gain_reuse_models, measurements=["outdegree", "skew", "similarity"])
+    resnetwork = eval_network(gain_reuse_models, measurements=["outdegree"])
     mae_6.append(resratings["mae"])
     outdegrees_6.append(resnetwork["outdegree"])
     gini_6.append(calculate_redistribution(userknn_models, gain_reuse_models, how="gini"))
     skew_6.append(calculate_redistribution(userknn_models, gain_reuse_models, how="skew"))
+    hoover_6.append(calculate_redistribution(userknn_models, gain_reuse_models, how="hoover"))
 
     del gain_reuse_models
     del predictions
@@ -228,7 +252,6 @@ for trainset, testset in folds.split(dataset):
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
-NAME = "ml-100k"
 np.save("results/" + NAME + "/K.npy", K)
 
 np.save("results/" + NAME + "/mae_userknn.npy", np.mean(mae_1, axis=0))
@@ -258,6 +281,13 @@ np.save("results/" + NAME + "/gini_gain.npy", np.mean(gini_5, axis=0))
 np.save("results/" + NAME + "/gini_userknn_reuse.npy", np.mean(gini_2, axis=0))
 np.save("results/" + NAME + "/gini_pop_reuse.npy", np.mean(gini_4, axis=0))
 np.save("results/" + NAME + "/gini_gain_reuse.npy", np.mean(gini_6, axis=0))
+
+np.save("results/" + NAME + "/hoover_userknn.npy", np.mean(hoover_1, axis=0))
+np.save("results/" + NAME + "/hoover_pop.npy", np.mean(hoover_3, axis=0))
+np.save("results/" + NAME + "/hoover_gain.npy", np.mean(hoover_5, axis=0))
+np.save("results/" + NAME + "/hoover_userknn_reuse.npy", np.mean(hoover_2, axis=0))
+np.save("results/" + NAME + "/hoover_pop_reuse.npy", np.mean(hoover_4, axis=0))
+np.save("results/" + NAME + "/hoover_gain_reuse.npy", np.mean(hoover_6, axis=0))
 
 """
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
