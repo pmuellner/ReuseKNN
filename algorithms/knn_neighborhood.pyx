@@ -92,6 +92,7 @@ class UserKNN:
         possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in self.trainset.ir[i]]
         possible_mentors_data = sorted(possible_mentors_data, key=lambda t: t[2])[::-1]
 
+
         if self.random_neighbors:
             mentors = np.random.choice(list(possible_mentors), replace=False, size=min(self.k, len(possible_mentors)))
             self.mentors[u] = self.mentors[u].union(set(mentors))
@@ -127,6 +128,10 @@ class UserKNN:
 
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
+
+        for _, _, _, u_ in k_neighbors:
+            n_students = len(self.students[u_])
+            self.n_students_at_q[u_].append(n_students)
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
@@ -186,8 +191,14 @@ class UserKNN:
         for user_id, item_id, rating in testset:
             uid, iid, r, r_, details = self.predict(user_id, item_id,  rating)
             predictions.append((uid, iid, r, r_, details))
-            absolute_errors[uid].append(np.abs(r - r_))
-        self.mae_u = {uid: np.mean(aes) for uid, aes in absolute_errors.items()}
+            iuid = self.trainset.to_inner_uid(uid)
+            absolute_errors[iuid].append(np.abs(r - r_))
+
+        self.mae_u = {iuid: np.mean(aes) for iuid, aes in absolute_errors.items()}
+
+        self.exposure_u = {iuid: 0 for iuid in self.trainset.all_users()}
+        for iuid, students in self.students.items():
+            self.exposure_u[iuid] = len(students)
 
         return predictions
 
@@ -354,11 +365,16 @@ class UserKNN:
                 gain[student, mentor] = g
         return gain
 
-    @property
+    """@property
     def trust_graph(self):
         G = nx.DiGraph()
         G.add_nodes_from(self.trainset.all_users())
-        for u, students in self.students.items():
+        for u in self.trainset.all_users():
+            if u in self.students:
+                students = self.students[u]
+            else:
+                students = []
+        #for u, students in self.students.items():
             for s in students:
                 G.add_edge(u, s)
 
@@ -381,4 +397,4 @@ class UserKNN:
                     path_lengths.append(l)
         avg_path_length = np.mean(path_lengths)
 
-        return avg_path_length
+        return avg_path_length"""
