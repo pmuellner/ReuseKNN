@@ -44,6 +44,7 @@
 \usepackage{multirow}
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{bbm}
+\usepackage[export]{adjustbox}
 
 %%
 %% \BibTeX command to typeset BibTeX logo in the docs
@@ -94,8 +95,11 @@
         
 \newcommand{\pmu}[1]{
         \textcolor{orange}{PM: #1}}
+        
+\newcommand{\Rho}{\mathrm{P}}
 
 \DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
 %%
 %% end of the preamble, start of the body of the document source.
 \begin{document}
@@ -104,7 +108,7 @@
 %% The "title" command has an optional parameter,
 %% allowing the author to define a "short title" to be used in page headers.
 %\title{\dk{Sharing is Caring: Neighborhood Reuse for Privacy-Aware Collaborative Filtering Recommender Systems}}
-\title{ReuseKNN: Neighborhood Reuse for Privacy-Aware Collaborative Filtering}
+\title{\emph{ReuseKNN}: Neighborhood Reuse for Privacy-Aware Collaborative Filtering}
 
 %Controlling for Data Diffusion in Collaborative Filtering Recommender Systems
 %%
@@ -114,28 +118,28 @@
 %% "authornote" and "authornotemark" commands
 %% used to denote shared contribution to the research.
 %\author{Anonymous}
-% \author{Peter Müllner}
-% \email{pmuellner@know-center.at}
-% \affiliation{%
-%   \institution{Know-Center Gmbh}
-%   \city{Graz}
-%   \country{Austria}
-% }
+\author{Peter Müllner}
+\email{pmuellner@know-center.at}
+\affiliation{%
+  \institution{Know-Center Gmbh}
+  \city{Graz}
+  \country{Austria}
+}
 
-% \author{Elisabeth Lex}
-% \affiliation{%
-%   \institution{Graz University of Technology}
-%   \city{Graz}
-%   \country{Austria}}
-% \email{elisabeth.lex@tugraz.at}
+\author{Dominik Kowald}
+\email{dkowald@know-center.at}
+\affiliation{%
+  \institution{Know-Center Gmbh}
+  \city{Graz}
+  \country{Austria}
+}
 
-% \author{Dominik Kowald}
-% \email{dkowald@know-center.at}
-% \affiliation{%
-%   \institution{Know-Center Gmbh}
-%   \city{Graz}
-%   \country{Austria}
-% }
+\author{Elisabeth Lex}
+\affiliation{%
+  \institution{Graz University of Technology}
+  \city{Graz}
+  \country{Austria}}
+\email{elisabeth.lex@tugraz.at}
 
 %%
 %% By default, the full list of authors will be used in the page
@@ -149,7 +153,19 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-todo
+In user-based \emph{KNN} recommender systems, recommendations are calculated based on the $k$ nearest neighbors of a target user.
+That can pose a privacy risk as the target user could infer its neighbors' rating data.
+In this work, we propose modifications to the inner workings 
+%architecture 
+of user-based \emph{KNN} to minimize the number of users who can infer other users' rating data. 
+To that end, we present \emph{ReuseKNN}, a novel privacy-aware recommender system that preserves privacy through neighborhood reuse.
+\emph{ReuseKNN} estimates a user's reusability as the degree to which the target user could reuse this user’s data for recommendations it may query in the future.
+\emph{ReuseKNN} then scores users by a weighted average between similarity and reusability, and the highest scored users are used as neighbors for a target user. 
+This trade-off between similarity and reusability serves as a proxy for users’ trade-off between accuracy and privacy.
+In this paper at hand, we present the concept of neighborhood reuse and outline its potential to increasing privacy in user-based \emph{KNN} recommender systems.
+Furthermore, we propose unpersonalized and personalized neighborhood reuse methods to estimate users' reusability and generate reusable neighborhoods in \emph{ReuseKNN}.
+Additionally, our experiments on four different datasets from various domains, i.e., \emph{MovieLens 100k}, \emph{MovieLens 1M}, \emph{Jester}, and \emph{Goodreads}, reveal that \emph{ReuseKNN} yields substantially better trade-offs between users' accuracy and privacy compared to traditional user-based \emph{KNN}.
+In detail, we show that \emph{ReuseKNN} improves privacy of traditional user-based \emph{KNN} recommender systems, at no or only marginal cost of accuracy. We hope that our results inspire future work to make traditional recommendation algorithms more privacy-aware by modifying their inner workings through neighborhood reuse.
 \end{abstract}
 
 %%
@@ -160,7 +176,7 @@ todo
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{Todo; TODO}
+\keywords{Recommender System; Collaborative Filtering; Privacy; User-based KNN; Inference Attacks}
 
 
 %%
@@ -169,458 +185,511 @@ todo
 \maketitle
 
 \section{Introduction}
-\pmu{RQ1: Utility-privacy trade-off. Outdegree vs. MAE + size of mentorset}
-\pmu{RQ2: Debiasing. skewness plots}
+Recommender systems often rely on collaborative filtering to generate recommendations.
+However, collaborative filtering can pose severe risks to users' privacy, since, for example in the case of user-based \emph{KNN}, recommendations are generated based on data that is collected from the $k$ nearest neighbors of a target user.
+The threat to users' privacy lies in their contribution to the generation of other users' recommendations.
+In this regard, research in~\cite{ramakrishnan2001being} and~\cite{calandrino2011you} illustrates that users are susceptible to multiple privacy threats, such as, e.g., the inference of their private rating data. 
+To alleviate this issue, several works proposed to use \emph{Differential Privacy}~\cite{dwork2014algorithmic} to protect users' data in user-based \emph{KNN} recommender systems~\cite{zhu2014effective,lu2015security}.
+As an alternative to \emph{Differential Privacy}, recent research~\cite{badsha2017privacy,zhang2021privacy} utilized \emph{Homomorphic Encryption}~\cite{gentry2009fully} in user-based \emph{KNN} recommender systems to encrypt users' data and provide stronger privacy guarantees. 
+In contrast to the works above, which aim to ensure privacy by modifying users' data, in our work, we aim to increase the privacy of users by proposing modifications to the inner workings 
+%architecture 
+of user-based \emph{KNN} recommendation methods that do not modify the users' data. 
+In particular, we present our novel \emph{ReuseKNN} recommender system, which minimizes the number of users that could infer other users' rating data.
+For example, consider our schematic illustration on the left hand side in Figure~\ref{fig:approach}.
+Here, we compare a traditional user-based \emph{KNN} recommender system, i.e., \emph{UserKNN}, to \emph{ReuseKNN}.
+Instead of utilizing \emph{Bob}'s, \emph{Tim}'s, and \emph{John}'s rating data for generating recommendations for \emph{Alice} as traditional \emph{UserKNN} would do, \emph{ReuseKNN} reuses \emph{Bob} in all recommendations and thus, \emph{Tim} and \emph{John} do not contribute to the generation of \emph{Alice}'s recommendations.
+This means that \emph{Alice} cannot infer \emph{Tim}'s and \emph{John}'s rating data and as such, their privacy is protected.
+In detail, before selecting a user as neighbor, \emph{ReuseKNN} estimates the user's reusability, which is the degree to which the target user could reuse this user's data for multiple recommendations. 
+To quantify a user's reusability, \emph{ReuseKNN} utilizes both unpersonalized and personalized neighborhood reuse methods.
+In contrast to traditional \emph{UserKNN}, which selects neighbors based on their similarity to the target user, \emph{ReuseKNN} scores users by a weighted average between similarity and reusability.
+Then, \emph{ReuseKNN} chooses the $k$ highest scored users to be neighbors for a target user. 
+This trade-off between similarity and reusability serves as proxy for users' trade-off between accuracy and privacy.
 
+To illustrate the impact of reusing neighbors in user-based \emph{KNN} recommender systems on users' accuracy-privacy trade-off, we compare \emph{ReuseKNN} with traditional \emph{UserKNN} on four different datasets, i.e., \emph{MovieLens 100k}, \emph{MovieLens 1M}, \emph{Jester}, and \emph{Goodreads}. 
+We find that \emph{ReuseKNN} yields a better accuracy-privacy trade-off than \emph{UserKNN}, i.e., it increases users' privacy at no or only marginal cost of accuracy.
+Especially \emph{ReuseKNN} utilizing the personalized neighborhood reuse method shows the best results over all four datasets.
+Our experiments also indicate that \emph{ReuseKNN} substantially limits the growth of a user's neighborhood to a minimum, in contrast to traditional \emph{UserKNN}.
+Additionally, we demonstrate that \emph{ReuseKNN} does not utilize the same neighborhood for all target users and as such, does not show a bias towards a small set of neighbors.
+Instead, it tends to assign users their own distinct set of reusable neighbors.
 
-\begin{figure*}[!htb]
-    \includegraphics[width=\textwidth]{figures/intro.pdf}
-    \caption{In traditional UserKNN the rating data of Bob, Tim, and John are utilized for generating recommendations for target user Alice. Alice's knowledge is restricted to her data, the algorithm used, and the recommendations. By adding specific ratings and querying recommendations, Alice could infer the user profiles of Bob, Tim, and John.
-    We propose a novel family of methods, i.e., ReuseKNN, in which Alice reuses the same set of neighbors for all queries. Here, all queries are redistributed to Bob. As such, inference on Tim and John is impossible, for the price of an increased chance of successful inference on Bob.}
-\end{figure*}
+Taken together, the three main contributions of our paper are as follows: 
+First, we discuss the concept of reusing neighbors for privacy-aware collaborative filtering and its impact on users' privacy.
+Second, we outline our novel \emph{ReuseKNN} recommender system and propose multiple unpersonalized and personalized neighborhood reuse methods that estimate to what degree a target user could reuse its neighbors.
+Third, we conduct extensive experiments on four datasets with different characteristics from multiple domains and present how \emph{ReuseKNN} improves users' accuracy-privacy trade-offs in user-based collaborative filtering. 
 
-\pmu{zero-sum game regarding inference risk, we do not reduce total inference risk, we just redistribute it to a small set of mentors}
+Other research works focused on protecting users' privacy through modifying their data.
+In contrast, we propose modifications to the inner workings 
+%architecture 
+of user-based \emph{KNN} to decrease the number of users that could infer other users' rating data and as such, we increase privacy of these users.
+To the best of our knowledge, we are the first utilizing reusable neighborhoods to improve users' accuracy-privacy trade-offs in user-based \emph{KNN} recommender systems.
+We hope that our findings motivate other researchers to also modify the inner workings of traditional recommender systems to make them more privacy-aware.
 
-\pmu{Intro problems: too much related work? attacks on statistical databases not in focus (de-anonymization), clear contributions, knowledge of the target user}
+%With that we desire to give an example of how simple adaptions to the inner workings of traditional recommendation algorithms could alleviate their users' privacy issues.
 
-\el{you should have this structure for the intro in mind: 1-2 introductory sentences, problem, scope and objective, approach, contributions and findings}
-
-\el{You can start more briefly, so shorten the first paragraph a bit - CF is a frequently used recsys technique. However, CF recommender systems can have privacy issues since recommendations are produced based on data that is collected from the $k$-nearest neigbors of a target user. --> that will make the intro part more concise and instantly highlight the problem.}
-Modern recommender systems are often based on collaborative filtering. 
-In this paradigm, users collaboratively share their knowledge to provide recommendations for a target user. Thus, the widsom of the crowd serves defines what the target user's recommendations consist of.
-In this regard, paying close attention to not leaking any private user information is a necessity requested by users~\pmu{cite} and to be guaranteed by state-of-the-art recommender systems.
-
-\el{Now, you need to say early on what this work is about. In this work, In our work, we aim to increase the privacy of users within the community by proposing modifications to the architecture of $k$-nearest neighbors recommendation methods.}
-\el{A rich body of research exists on preserving users' privacy in recommender systems that can be categorized into four strands - here, I would point to the respective recsys handbook chapter for an overview}: To provide users with their required privacy needs when participating in a recommender system, four strands of research evolved \el{if you say "four strands", list them with either (i) or first, second}: data privacy, algorithmic privacy, user-defined privacy, and architectural privacy \pmu{use names in community} \el{add references here}. 
-In data privacy, random noise is added to the data to obfuscate the true user profile.
-A rich toolkit to guarantee some boundary on the data disclosure is given by differential privacy~\cite{dwork2014algorithmic}.
-Algorithmic privacy aims to develop algorithms that do not expose the user to any threats on her privacy.
-Furthermore, it is questionable, whether a recommender system's adherence to a user's sensitive data yields sufficient advantages when compared to the increased exposure of a user's data.
-User-defined privacy enables a user with all means to control her data. 
-In detail, she \el{use the gender unspecific "they" also for a single user} decides what data to share and what data to not share with the recommender system.
-Often, privacy threats are not primarily posed by the algorithm or the data itself, but by the architecture of the recommender system. 
-For example, federated learning is widely-used to generate recommendations in a distributed setting.
-Here, no data ever leaves the device of a user.
-Users only shares updates and thus, nonsensitive information, with the community.
-However, research is aware that even in this case, private information could be inferred by a malicious user. 
-In this regard, research in~\cite{ramakrishnan2001being} illustrated that especially users of diverse taste, i.e., straddlers, are susceptible to privacy threats, such as inference of rating data and de-anonymization attacks similar to attacks in statistical databases. \dk{we can link this here to more novel works regarding explainability and serendipity in recommender systems because this problem especially occurs when this is given}
-
-In our work, we focus on increasing the privacy of users within the community by proposing modifications to the architecture of $k$-nearest neighbors recommendation methods.
-The threat of disclosing private data lies in the neighboring users' ''mentoring" of the target user, i.e., ''student", by providing their data to the recommender system in order to generate recommendations.
-For example, assume that Alice rated James Bond and queries a new movie to be recommended by the recommender system, which responds with Star Wars.
-In $k$-nearest neighbors, the recommendations are based on the most similar neighbors to the target user.
-Assume that $k=1$ and thus, Bob is the only neighbor of Alice.
-Then, Bob is only in the neighborhood of the target user Alice, if Bob shares at least one rating with Alice.
-Since Alice rated James Bond, it can be inferred that Bob rated James Bond.
-As the recommendation presented by the recommender system is Star Wars, Bob must have rated both, i.e., James Bond and Star Wars.
-
-Typically, the number of neighbors lies in the range of $[30, 50]$~\pmu{cite}.
-Furthermore, a user's profile comprises many ratings.
-Here, inference is not as simple as in our example with a single neighbor, but still feasible.
-Given all users rated more than one movie, and the number of neighbors $k>1$, then Alice can neither identify a user, nor infer ratings.
-The presence of multiple candidates protects the anonymity of each user, i.e., $k$-anonymity.
-However, Alice could generate fake users similar to her, fix James Bond and alter the remaining ratings.
-If most variations do not yield the same recommendation, i.e., Star Wars, Alice's confidence that her neighbors rated James Bond may increase.
-The more often Bob is in the neighborhood of Alice, the higher the chances of successful inference through Alice.
-How often Bob is in the neighborhood of other users, is therefore correlated to Bob's risk of disclosure.
-Thus, in the work at hand, privacy risk is defined as the number of times, a user mentors a target user.
-
-
-
-Our work aims to reduce the number of queries per mentor, so that inference and de-anonymization attacks are not feasible. 
-For example, Alice queries ten recommendations, which are each based on a single mentor.
-Thus, each mentor is queried once, which poses privacy threats of Alice towards her mentors.
-In our work, we reduce the number of queries per mentor by reusing the mentors of the first query for the succeeding queries.
-In this setting, we modify Alice's neighborhood such that her ten queries no longer aim at ten mentors, but at only one.
-Therefore, we protected nine users by transferring the privacy risk towards the tenth user.
-However, we illustrate that also this single highly-susceptible user can be protected.
-In this study at hand, we simulate this user by creating a fake user, with a similar, but not identical, user profile.
-Through this simulation, also the real user can be protected and the privacy risk is transferred to our fake user. \dk{cool, wie machen wir das genau?}
-
-
-
-
-\pmu{attacks on statistical databases necessary? what's the benefit?} \dk{nein, so wie es ist, ist es gut, also nur einmal erwähnt beim citen des papers, dann wuered ich wie oben erwaehnt noch sagen, dass explainability und serendipity die Gefahr noch erhoehen und hier ein paar neue Papers zitieren}
-
-\begin{figure*}[!htb]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Approach}
+\begin{figure*}[!t]
     \centering
     \includegraphics[width=\textwidth]{figures/approach.pdf}
-    \caption{Here, the detailed impact of our approach, is illustrated with a basic example. Here, $Q_1, Q_2$ and $Q_3$ are Alice's queries and Mentors refers to Alice's utilized mentors. In UserKNN, target user Alice's recommendations are based on the rating data of Bob, Tim, and John. Thus, we call Bob, Tim, and John mentors of target user Alice. 
-    Since each mentor rated at least one item she has rated, Alice knows that all mentors rated James Bond. Plus, upon recommendation of, e.g., Cast Away, she knows that some of her mentors also rated Cast Away. By probing, i.e., gradually adding specific ratings and querying recommendations, Alice could infer the user profiles of Bob and John.
-    Our proposed family of methods, i.e., ReuseKNN, redistributes all queries to Bob. Thus, arget user Alice cannot infer Tim's and John's rating data, whereas the chance of successful inference of Bob's rating data increases. Moreover, since Alice's recommendations are solely based on Bob, she could infer all of Bob's data with only three queries, which lead to three recommendations leaking Bob's rating data.
+    \caption{
+    (Left) Schematic illustration of our novel \emph{ReuseKNN} recommender system compared to traditional \emph{UserKNN}. 
+    In \emph{ReuseKNN}, \emph{Bob} is reused for all of \emph{Alice}'s recommendation queries.
+    Thus, \emph{Alice} cannot infer \emph{Tim}'s and \emph{Bob}'s rating data.
+    (Right) Rating data of all users plus \emph{Alice}'s three recommendation queries, $Q_1$, $Q_2$, and $Q_3$ and her neighbors $N_{Alice}$ across these three queries. 
+    %In \emph{UserKNN}, \emph{Alice}'s recommendations are based on the rating data of her neighbors \emph{Bob}, \emph{Tim}, and \emph{John}.
+    In detail, the threat to users' privacy is that each of \emph{Alice}'s neighbors rated at least one item she has rated, i.e., \emph{James Bond}. Plus, upon recommendation of \emph{Cast Away}, she knows that some of her neighbors also rated \emph{Cast Away}. By gradually adding specific ratings and querying recommendations, \emph{Alice} could successively reveal parts of \emph{Tim}'s and \emph{John}'s rating data.
+    With \emph{ReuseKNN}, \emph{Bob} is reused for all three recommendation queries. Obviously, this means that \emph{Tim}'s and \emph{John}'s data is protected against inference.
     }
     \label{fig:approach}
 \end{figure*}
 
-\pmu{ It is important to note that if multiple mentors contribute to Alice's recommendations, the relative contribution of a single mentor decreases, as can be observed in Equation~\ref{eq:knn}.
-Therefore, it becomes harder for Alice to conduct an inference attack on a single mentor.
-One may be tempted to conclude that utilizing more mentors leads to the mentors being strongly protected against inference. 
-However, we note that Alice could easily bypass this protection by extensive probing and querying recommendations~\cite{calandrino2011you}.
-Furthermore, the recommender could utilize fewer neighbors to generate recommendations.
-As such, not as many users would be mentors of the target user and thus, the average number of users a target user could perform inference on, would decrease.
-However, decreasing the number of neighbors, i.e., mentors, would substantially decrease the quality of the generated recommendations~\cite{herlocker1999algorithmic,herlocker2002empirical}}
+User-based \emph{KNN} recommender systems generate an estimated rating score for a recommendation query $Q_{u, i}$ of \emph{target user} $u$ and \emph{target item} $i$ by utilizing the ratings of other users that have rated $i$.
+In detail, for every item $i$, for which target user $u$ queries an estimated rating score, i.e., $i \in Q_u$, the recommender system $\mathcal{R}$ select $k$ users that rated $i$, i.e., the nearest neighbors $N^k_{u, i}$ for $u$ and $i$.
+Then, $\mathcal{R}$ estimates $u$'s rating score for $i$, by considering the ratings of $N^k_{u, i}$, i.e., the recommendation $\mathcal{R}^k(u, i)$.
+Thus, the $k$ nearest neighbors $N^k_{u, i}$ contribute to target user $u$'s estimated ratings and, this way, also to $u$'s recommendations.
+Across multiple recommendation queries $Q_u$ of target user $u$, we define the set of $u$'s neighbors as $N_u = \bigcup_{i \in Q_u} N^k_{u, i}$.
 
-\section{Approach}
-Traditional $k$-nearest neighbors collaborative filtering recommender system generates an estimated rating score for user $u$ and item $i$.
-In our work, all those users that rated $i$ are called \emph{neighbors} of a \emph{target user} for item $i$.
-Typically, the recommender system selects $k$ neighbors based on which its estimation of the target user's rating score of item $i$ is based on.
-Thus, these $k$ selected neighbors, i.e., $N^k_{u, i}$, contribute to target user $u$'s recommendations.
-In our work, we call all those users that contributed to at least one of target user $u$'s recommendations \emph{mentors} of $u$.
-More formally, the set of mentors of $u$ is $M_u = \bigcup_{i \in Q_u} N_{u, i}$, where $Q_u$ is the set of items, for which $u$ queries an estimated rating score.
-% In our toy example of ReuseKNN in Figure~\ref{fig:approach}, Alice is the target user $u$ querying recommendations.
-% For recommending item $i$, i.e., Titanic, Bob, Tim, and John are neighbors $N_{u, i}$, as they rated Titanic and could serve as basis for estimating Alice's rating for Titanic.
-% However, out of all three neighbors, only Bob is selected to be a mentor (i.e., Bob $ \in M_{u, i}$) for Alice querying Titanic. 
-% Thus, the estimation of the rating score of Alice for Titanic is solely based on Bob.
+Based on these definitions, in traditional user-based \emph{KNN} recommender systems, the recommender system's response $\mathcal{R}^k(u, i)$ to the target user's recommendation query $Q_{u, i}$ depends on the $k$ nearest neighbors $N^k_{u, i}$.
+For a succeeding item $j$, the recommendation $\mathcal{R}^k(u, j)$ depends on another set of $k$ nearest neighbors $N^k_{u, j}$.
+In Figure~\ref{fig:approach}, we illustrate the generation of multiple recommendations for target user \emph{Alice} with a traditional user-based \emph{KNN} recommender system, i.e., \emph{UserKNN}. 
+We see that after recommending \emph{Star Wars}, \emph{Cast Away}, and \emph{Titanic}, target user \emph{Alice}'s set of neighbors $N_{Alice}$ comprises \emph{Bob}, \emph{Tim}, and \emph{John}.
+\emph{Bob} contributes to three recommendations, \emph{John} to two recommendations and \emph{Tim} to one recommendation. 
+Consider \emph{Alice} adding a rating for \emph{Titanic} to her existing rating for \emph{James Bond}.
+If the recommender system yields the recommendation \emph{Cast Away}, \emph{Alice} knows that there exists at least one user that rated \emph{Titanic}, \emph{James Bond}, and \emph{Cast Away}.
+However, since only one user, i.e., \emph{John}, rated these items, \emph{Alice} revealed parts of \emph{John}'s rating data, i.e., \emph{John}'s rating for \emph{Cast Away}.
+This by itself is a breach of \emph{John}'s privacy.
+%Plus, even incomplete knowledge of John's rating data is a strong threat to Bob's privacy.
+%For example, incomplete knowledge could boost the effectiveness of other kinds of attacks, e.g., Sybil attacks~\cite{calandrino2011you}.
+%Furthermore, John contributes to more of Alice's recommendations than Tim and thus, John has a higher susceptibility to inference attacks by Alice than Tim~\cite{ramakrishnan2001being}.
+%However, technically, Alice could still infer not only the rating data of John, but also of all users that contributed to her recommendations.
+%More concretely, from a privacy perspective, a user could be both, an attacker by itself, but also exposed to others' inference attacks.
+This means that despite target user $u$ being solely aware of $u$'s own rating data and the recommendations $u$ receives, $u$ could infer the rating data of its neighbors by applying probing techniques~\cite{calandrino2011you,ramakrishnan2001being}, which means that all neighbors of $u$ are exposed to $u$'s potential inference attacks.
+Additionally, we highlight that in user-based \emph{KNN} recommender systems, a user typically (i) queries recommendations, and (ii) contributes to the recommendations of other users.
+As such, a user could be an attacker to other users, but at the same time, be also exposed to others' inference attacks.
 
-Despite $u$ is only aware of her own data, the algorithm, and the recommendations she receives, $u$ could infer the rating data of her neighbors~\cite{calandrino2011you,ramakrishnan2001being}.
-As such, all mentors of $u$ are susceptible to $u$'s inference attacks.
-Moreover, the paper at hand focuses on a centralized implementation of UserKNN.
-With this, the recommender system is responsible for generating the estimated rating score $\hat{r}_{u, i}$ and users (e.g., a target user and its neighbors) only communicate with the recommender system itself.
-As such, the recommender system must be equipped with privacy-preserving methods to (i) compute the similarity between two users and (ii) maintain a dictionary, indicating what user rated which items.
-Recent research proposes a plethora of privacy-preserving methods to realize the above points.
-For this reason, we leave this points open and concentrate on how a recommender system shall select a target user's neighbors in order to decrease the possibility of inference.
+In our work, we propose \emph{ReuseKNN}, a novel user-based \emph{KNN} recommender system reducing the exposure of users to inference attacks by leveraging our family of neighborhood reuse methods.
+In \emph{ReuseKNN}, we redirect the users' exposure by reusing a target user's neighbors to generate recommendations. 
+Our intuition is that reusing a target user $u$'s neighbors leads to other users not having to serve as neighbors for $u$.
+With that, we can decrease users' exposure and increase their privacy.
+Before describing our neighborhood reuse approach in more detail, we give a more formal definition of \emph{UserKNN}.
 
-\subsection{UserKNN}
+\subsection{Traditional \emph{UserKNN} Recommender System}
 \label{subsec:userknn}
-In collaborative recommender systems, users' recommendations are based on collaboration among users and as such, exploitation of other users' data.
-In the case of UserKNN, the recommender system generates an estimation $\hat{r}_{u, i}$ of a target user $u$'s preference for item $i$ by leveraging the data of $u$'s top $k$ neighbors $N^k_{u, i}$ for item $i$ according to some similarity measurement $sim$, in detail
+As mentioned, a traditional user-based \emph{KNN} recommender system, i.e., \emph{UserKNN}, generates an estimation $\hat{r}_{u, i}$ of a target user $u$'s preference for item $i$ by leveraging the data of $u$'s $k$ nearest neighbors $N^k_{u, i}$ for item $i$ according to some similarity measurement $sim$. This is given by:
 \begin{equation}\label{eq:knn}
     \hat{r}_{u, i} = \frac{\sum_{n \in N^k_{u, i}} sim(u, n) \cdot r_{n, i}}{\sum_{n \in N^k_{u, i}} sim(u, n)}
 \end{equation}
 where $r_{n, i}$ is the rating of neighbor $n$ for item $i$ and $sim$ denotes a similarity function which measures the conformity between target user $u$ and neighbor $n$.
-Typically, cosine-similarity is used as a similarity function, as it usually results in a better recommendation accuracy than other similarity functions~\cite{bagchi2015performance}.
-Furthermore, we pinpoint the observation that since $n$ is within the top $k$ neighbors of user $u$ and item $i$, $n$ is also a mentor of $u$ and belongs to the set of $u$'s mentors $M_u$.
+Typically, Cosine similarity is used as a similarity function due to its efficiency and ability to provide accurate recommendations~\cite{bagchi2015performance,verma2020comparative}.
 
-In our toy example as given in Figure~\ref{fig:approach}, Alice is the target user querying recommendations from the recommender system, i.e., UserKNN.
-For Alice's first query, i.e., Star Wars, UserKNN selects Bob to be a neighbor of Alice, since Bob is the only user that rated both, James Bond and Star Wars.
-For Alice's second query, i.e., Cast Away, UserKNN selects Bob and John to be neighbors of Alice.
-Thus, the set of neighbors that contributed at least once to Alice's recommendations, i.e., Alice's mentors, now comprises Bob and John.
-Finally, in a query for Titanic, UserKNN, selects Bob, Tim, and John as neighbors for Alice.
-In total, UserKNN has selected three users, i.e., Bob, Tim, and John to be neighbors of target user Alice.
-Thereby, Bob, Tim, and John contribute to at least one of Alice's recommendations.
-As such, Bob, Tim, and John are mentors of Alice.
-Hence, there is the possibility that Alice could infer the rating data of Bob, Tim, and John.
-%For example, upon recommendation of Cast Away, Alice knows that some of her mentors rated Cast Away.
-%By adding ratings and querying recommendations, she could infer the rating data of Bob and John.
-% It is important to note that if multiple mentors contribute to Alice's recommendations, the relative contribution of a single mentor decreases, as can be observed in Equation~\ref{eq:knn}.
-% Therefore, it becomes harder for Alice to conduct an inference attack on a single mentor.
-% One may be tempted to conclude that utilizing more mentors leads to the mentors being strongly protected against inference.
-% However, we note that Alice could easily bypass this protection by extensive probing and querying recommendations. \pmu{add reference or choose other argument}
+In our example illustrated in Figure~\ref{fig:approach}, target user \emph{Alice} has rated the movie \emph{James Bond} and is now querying movie recommendations from the \emph{UserKNN} recommender system.
+For \emph{Alice}'s first query, i.e., \emph{Star Wars}, \emph{UserKNN} selects \emph{Bob} as neighbor for \emph{Alice}, since \emph{Bob} is the only user that rated both, \emph{James Bond} and \emph{Star Wars}.
+For \emph{Alice}'s second recommendation query, i.e., \emph{Cast Away}, \emph{UserKNN} selects \emph{Bob} and \emph{John} to be neighbors of \emph{Alice}.
+Thus, the set of \emph{Alice}'s neighbors across multiple recommendation queries, i.e., $N_{Alice}$, now comprises \emph{Bob} and \emph{John}.
+Finally, in a query for \emph{Titanic}, \emph{UserKNN} selects \emph{Bob}, \emph{Tim}, and \emph{John} as neighbors for \emph{Alice}.
+In total, \emph{UserKNN} has selected three users, i.e., \emph{Bob}, \emph{Tim}, and \emph{John} to be neighbors of target user \emph{Alice}.
+Hence, there is the possibility that \emph{Alice} could infer the rating data of \emph{Bob}, \emph{Tim} and \emph{John}. 
+We now describe how this is different in case of our novel \emph{ReuseKNN} approach.\footnote{To some extent, also traditional \emph{UserKNN} reuses a target user $u$'s neighbors, as it tends to not select completely disjoint sets of neighbors for each of $u$'s recommendations.
+However, the selection of neighbors is solely based on similarity and thus, agnostic to whether neighbors could be reused. This is contrary to our proposed \emph{ReuseKNN} recommender system, which actively incorporates neighbors' reusability to increase privacy.}
 
-\subsection{Threat Model}
-In traditional $k$-nearest neighbor algorithms, the estimated rating score $\hat{r}_{u, i}$ of target user $u$ for a item $i$ depends on the top k neighbors $N^k_{u, i}$ selected by the recommender system.
-For a succeeding item $j$, the estimated rating score $\hat{r}_{u, j}$ then depends on other top k neighbors $N^k_{u, j}$.
-As our example in Figure~\ref{fig:approach} shows, after recommending Star Wars, Cast Away, and Titanic, target user Alice's set of mentors comprises Bob, Tim, and John.
-Bob and John contribute to three respectively two recommendations and Tim contributes to one recommendation. 
-Consider Alice adding a rating for Titanic to her existing rating for James Bond.
-If the recommender system yields the recommendation Star Wars, Alice could infer that Bob rated Star Wars. 
-This by itself poses a severe breach of Bob's privacy.
-Plus, even incomplete knowledge of Bob's rating data is a strong threat to Bob's privacy.
-For example, this incomplete knowledge could boost the effectiveness of other kinds of attacks, e.g., Sybil attacks~\cite{calandrino2011you}.
-Furthermore, since the number of recommendations in which Bob's contributes to is higher than for Tim, Bob is more prone to inference attacks than Tim, since Bob reveals more about his rating data~\cite{ramakrishnan2001being}.
-However, technically, Alice could still infer not only the rating data of Bob, but also of John, and Tim.
+% From a privacy perspective, a user could attain two roles: \emph{susceptible} and \emph{attacker}.
+% If the recommender system selects user $n$ to serve as neighbor in at least one recommendation for target user $u$, $n$ is also a mentor of $u$.
+% Due to $n$ being $u$'s mentor, $n$ attains the role of a susceptible.
+% That means that $n$ is susceptible to $u$'s inference attacks.
+% Clearly, $u$ then attains the role of an attacker.
+% Also, we highlight that in typical $k$-nearest neighbor collaborative filtering recommender system, a user (i) queries recommendations and (ii) contributes in the recommendations for other users.
+% As such, a user could be susceptible to inference, but still be an attacker to other users.
 
-From a privacy perspective, a user could attain two roles: \emph{susceptible} and \emph{attacker}.
-If the recommender system selects user $n$ to serve as neighbor in at least one recommendation for target user $u$, $n$ is also a mentor of $u$.
-Due to $n$ being $u$'s mentor, $n$ attains the role of a susceptible.
-That means that $n$ is susceptible to $u$'s inference attacks.
-Clearly, $u$ then attains the role of an attacker.
-Also, we highlight that in typical $k$-nearest neighbor collaborative filtering recommender system, a user (i) queries recommendations and (ii) contributes in the recommendations for other users.
-As such, a user could be susceptible to inference, but still be an attacker to other users.
-
-\subsection{ReuseKNN}
+\subsection{Our Novel \emph{ReuseKNN} Recommender System}
 \label{subsec:reuseknn}
-In order to provide high quality recommendations for one user whilst ensuring privacy of others, the paper at hand proposes a novel family of neighborhood selection methods, i.e., ReuseKNN.
-Instead of utilizing fewer neighbors per recommendation and as such, decreasing the number of mentors per target user, ReuseKNN decreases the number of mentors per target user whilst not limiting the number of neighbors that contribute to a recommendation
-As such, it equips the users with increased privacy and provides them high quality recommendations.
-In particular, the key feature of ReuseKNN is to reuse a target user's previously utilized neighbors whenever feasible.
-With that, it reduces the number of users that are added to the target user's set of mentors with every recommendation.
-For example, as can be seen in Figure~\ref{fig:approach}, ReuseKNN redirects queries for multiple neighbors, i.e., Bob, Tim, and John, to Bob.
-Thus, all recommendations for Alice are based on only Bob who serves as mentor, whereas Tim and John are protected against inference.
-More detailed, for Alices first recommendation, i.e., Star Wars, ReuseKNN is inline with UserKNN (cf. Section~\ref{subsec:userknn}) and selects Bob as neighbor.
-However, in the second recommendation, i.e., Cast Away, ReuseKNN differs from UserKNN.
-Instead of increasing Alice's set of mentors by using Tim or John as neighbors, ReuseKNN reuses the mentors already available to Alice.
-In detail, since mentor Bob already rated Cast Away, ReuseKNN reuses Bob as neighbor in Alice's recommendation of Cast Away.
-Similarly, in the third recommendation, i.e., Titanic, ReuseKNN does not add any additional mentors to Alice's set of mentors, since mentor Bob rated Titanic.
-Overall, instead of selecting all three users as mentors as UserKNN did, and thus exposing all users' data to Alice, ReuseKNN reuses Alice's mentors as neighbors in her recommendations and thereby, prohibits inference attacks by Alice on the other users not used as mentors.
-Specifically, ReuseKNN employs our family of neighborhood-selection methods that restrict the number of distinct mentors per target user.
-For $Q_u$ being the set of items for which a target user $u$ queries estimated rating scores and $N^k_{u, i}$ being the top $k$ neighbors of $u$ for item $i$ used in estimating the rating score of $i$, ReuseKNN aims to identify the smallest set of distinct neighbors such that it minimizes the cardinality of $M_u = \cup_{i \in Q_u} N^k_{u, i}$
-whilst keeping the quality of $u$'s recommendations high.
+In order to provide accurate recommendations for one user whilst ensuring privacy of others, the paper at hand proposes the \emph{ReuseKNN} recommender system, which utilizes a novel family of neighborhood reuse methods.
+Instead of decreasing the number of neighbors per target user, i.e., $N_u$, by using fewer neighbors per recommendation query, i.e., $N_{u, i}$, \emph{ReuseKNN}'s primary goal is to decrease the number of neighbors per target user whilst not limiting the number of neighbors that contribute to the generation of a recommendation in order to keep accuracy high~\cite{herlocker1999algorithmic,herlocker2002empirical}.
 
-Traditionally, cosine-similarity is utilized to identify neighbors.
-In detail, neighbors are selected based on their similarity to the target user and thus, shall improve utility, i.e., accuracy of the target user's recommendations.
-Our family of methods does not only consider the similarity $sim(u, n)$ between target user $u$ and neighbor $n$, but also the extent $reusability(n|u)$ to which the recommender system could reuse $n$'s rating data in $u$'s future recommendations.
-We formalize this trade-off between utility and privacy as weighted average between similarity and reusability.
-\begin{equation}
+In particular, the key feature of \emph{ReuseKNN} is to reuse a target user's previously utilized neighbors whenever feasible.
+With that, it reduces the number of users that are added to the target user's set of neighbors across multiple recommendation queries.
+As shown in Figure~\ref{fig:approach}, \emph{ReuseKNN} redirects queries for multiple neighbors, i.e., \emph{Tim} and \emph{John}, to \emph{Bob}.
+Thus, all recommendations for \emph{Alice} are based solely on neighbor \emph{Bob}, whereas \emph{Tim} and \emph{John} are not neighbors and thus, are protected against inference attacks by \emph{Alice}.
+More detailed, for \emph{Alice}'s first recommendation query, i.e., \emph{Star Wars}, \emph{ReuseKNN} works in the same way as traditional \emph{UserKNN} and thus, selects \emph{Bob} as neighbor.
+However, for the second recommendation query, i.e., \emph{Cast Away}, \emph{ReuseKNN} differs from \emph{UserKNN}.
+Instead of increasing \emph{Alice}'s set of neighbors $N_{Alice}$ by using both, \emph{Tim} and \emph{John} as neighbors for this recommendation, \emph{ReuseKNN} reuses neighbors from $N_{Alice}$.
+In detail, since neighbor \emph{Bob} already rated \emph{Cast Away}, \emph{ReuseKNN} reuses \emph{Bob} for \emph{Alice}'s recommendation of \emph{Cast Away}.
+Moreover, we note that the rating of \emph{John} is in line with the rating of \emph{Bob}.
+As such, including \emph{John} as neighbor would have no valuable advantage over reusing \emph{Bob} on \emph{Alice}'s recommendation.
+Similarly, in the third recommendation query, i.e., \emph{Titanic}, \emph{ReuseKNN} does not add any additional neighbors for \emph{Alice} since neighbor \emph{Bob} has also rated \emph{Titanic}.
+Plus, utilizing also \emph{Tim} and \emph{John} would not have any substantial benefit since their average rating corresponds to \emph{Bob}'s rating.
+Overall, instead of selecting three different users as neighbors as \emph{UserKNN} does, and thus exposing these users' data to \emph{Alice}, \emph{ReuseKNN} reuses \emph{Alice}'s neighbors in her recommendations and thereby, prohibits inference attacks by \emph{Alice} on the users outside her neighborhood.
+
+\subsubsection{Formalizing Neighborhood Reuse} 
+For $Q_u$ being $u$'s recommendation queries, i.e., the set of items for which target user $u$ queries estimated rating scores, and $N^k_{u, i}$ being the $k$ nearest neighbors of $u$ for item $i$ used in estimating the rating score of $i$, \emph{ReuseKNN} aims to identify the minimal set of neighbors across multiple recommendation queries such that it minimizes the cardinality of $N_u = \bigcup_{i \in Q_u} N^k_{u, i}$
+whilst keeping high accuracy of $u$'s recommendations.
+Our \emph{ReuseKNN} recommender system does not only consider the similarity $sim(u, n)$ between target user $u$ and neighbor $n$, but also the extent to which the recommender system could reuse $n$'s rating data across multiple of $u$'s future recommendation queries, i.e., $reusability(n|u)$, which depends on our neighborhood reuse methods presented in the remainder of this work.
+For this trade-off between similarity and reusability, we do not directly utilize the similarity and reusability scores, since both scores represent different measurements.
+Instead, we trade-off the ranks of the similarity and reusability scores.
+This accuracy-privacy trade-off can be formalized as weighted average between similarity and reusability:
+\begin{align}
     \label{eq:tradeoff}
-    score(n|u) = \lambda \cdot rank(sim(u, n)) + (1 - \lambda) \cdot rank(reusability(n|u))
-\end{equation}
-, where the recommender system, i.e., ReuseKNN, selects the highest scored $k$ neighbors $n$ to contribute to target user $u$'s recommendations and thus, serve as mentors for $u$.
-Furthermore, $\lambda \in [0; 1]$ is used to trade utility (i.e., $sim$) for privacy (i.e., $reusability$).
-Moreover, we do not directly utilize the similarity and reusability scores, since those two measurements cannot be compared as they have different scales depending on the dataset used.
-Instead, we make use of a ranking of these two scores, in order to propose a general approach, applicably to any dataset.
-By focusing on selecting neighbors that are reusable, ReuseKNN reuses neighbors from previous recommendations and as such, keeps the set of mentors of $u$ small.
-Hence, most users are not utilized as mentors and thus, are strongly protected against inference attacks by a target user.
-In the following sections, we describe our family of neighborhood-selection strategies utilized in ReuseKNN.
+    score(n|u) &= \lambda \cdot rank(sim(u, n)) + (1 - \lambda) \cdot rank(reusability(n|u)) \\
+    N^k_{u, i} &=\ \stackrel{k}{\argmax_{n \in U_i}} score(n|u)
+\end{align}
+where $U_i$ are all users that rated $i$ and \emph{ReuseKNN} selects the highest scored $k$ users, i.e., $N^k_{u, i}$, to contribute to target user $u$'s recommendation for item $i$ and thus, are added to $u$'s set of neighbors $N_u$.
+Furthermore, $\lambda \in [0; 1]$ is used to trade accuracy (i.e., $sim$) for privacy (i.e., $reusability$).
+In the paper at hand, we set the trade-off parameter $\lambda=0.5$ to equally account for both, accuracy and privacy.
+By focusing on reusing neighbors across multiple recommendation queries, \emph{ReuseKNN} keeps the set of $u$'s neighbors minimal, and thus, increases the number of users that are protected against inference attacks.
 
+To measure $reusability$ of neighbors, \emph{ReuseKNN} relies on our family of implicit and explicit neighborhood reuse methods.
+Implicit neighborhood reuse methods nudge the recommender system into selecting neighbors for a target user that are most likely also reusable for the target user's future recommendation queries.
+Explicit neighborhood reuse methods go one step further and not only nudge the recommender system into selecting reusable neighbors, but also explicitly reuse as many neighbors as possible.
+In the following, we detail our proposed implicit and explicit neighborhood reuse methods.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Implicit Neighborhood Reuse}
 \label{subsubsec:implicitreuse}
-In this work, we propose to reuse mentors of a target user in future recommendations, such that the average susceptibility to inference attacks is alleviated, whilst preserving the quality of recommendations, the target user receives.
-We rely on neighborhood-selection methods to identify a set of mentors, which are reusable as neighbors in future recommendations.
-Our implicit neighborhood reuse method do not explicitly reuse neighbors, but create an artificial bias towards selecting those users in all future recommendations.
-Neighbors are selected not only based on similarity, but based on a trade-off between similarity and reusability as outlined in Equation~\ref{eq:tradeoff}.
-In detail, our implicit neighborhood reuse schema is illustrated in Algorithm~\ref{algo:implicit_neighborhood}.
-In the following paragraphs, we discuss two methods, i.e., \emph{Popularity} and \emph{Gain}, which increase the reusability of mentors selected by the recommender systems.
+In this work, we propose to reuse neighbors of a target user across multiple recommendation queries, such that other users' exposure to inference attacks is alleviated, whilst preserving the accuracy of recommendations the target user receives.
+Our implicit neighborhood reuse methods do not explicitly reuse neighbors, but create an artificial bias towards selecting those neighbors in all future recommendations.
+Neighbors are selected not only based on similarity but based on a trade-off between similarity and reusability as outlined in Equation~\ref{eq:tradeoff}.
+In the following paragraphs, we discuss two methods for increasing the reusability of neighbors selected by the recommender system: (i) the unpersonalized \emph{Popularity} approach, and (ii) the personalized \emph{Gain} approach.
 
-\begin{algorithm}[!htb]
-    \SetAlgoLined
-    \DontPrintSemicolon
-    \SetKwInOut{Input}{Input}
-    \Input{Target user $u$ that queries estimated rating for item $i$, neighbors  $N_{u, i}$, and number of neighbors $k$ used in a recommendation.}
-    \KwResult{Set $N^k_{u, i}$ of top $k$ neighbors used for computing the estimated rating score (cf. Equation~\ref{eq:knn}).}
-    Rank all $n \in N_{u, i}$ according to $score(n|u)$ \tcp*{High $score(n|u)$ means high rank}
-    $N^k_{u, i}$ = $\{k$ top ranked neighbors$\}$ \\
-    \Return $N^k_{u, i}$
-    \caption{Implicit Neighborhood Reuse Schema}
-    \label{algo:implicit_neighborhood}
-\end{algorithm}
-
-\paragraph{Popularity}
+\vspace{2mm} \noindent \emph{Unpersonalized Neighborhood Reuse: Popularity.}
 Intuitively, the more popular an item, the more likely it is that a target user will query an estimated rating score for this item.
-Our \emph{Popularity} method relies on this observation and thus, quantifies, for how many recommendations the recommender system could reuse the user's data.
-That means, that it promotes neighbors, if they rated a lot of popular items.
-Also, it penalizes neighbors that rated lots of unpopular, or only a few items.
-In detail, the reusability score of neighbor $n$ is defined as
+Our \emph{Popularity} method relies on this observation and thus, estimates for how many recommendation queries the recommender system could reuse a neighbor's data.
+Thus, our \emph{Popularity} approach promotes neighbors if they rated a lot of popular items.
+Also, it penalizes neighbors that either rated only a few items or a lot of unpopular items. 
+In detail, the reusability score of neighbor $n \in N_{u, i}$ of target user $u$ and item $i$ is defined by:
 \begin{equation}
-    reusability(n|u) = reusability(n) = \sum_{r_{n, i} \in R_n} \frac{|\{ v \in U: \exists r_{v, i} \in R_v \}|}{|U|}
+    %reusability(n|u) = reusability(n) = \sum_{r_{n, i} \in R_n} \frac{|\{ v \in U: \exists r_{v, i} \in R_v \}|}{|U|} \label{eq:popularity}
+    reusability(n|u) = reusability(n) = \sum_{i \in I_n} \frac{|U_i|}{|U|} \label{eq:popularity}
 \end{equation}
-where $R_n$ are the ratings of user $n$ rated and $U$ is the set of all users.
-Here, $reusability$ is the sum of the item popularities, neighbor $n$ rated.
-As such, it measures the expected number of a random target user's recommendations, in which $n$ could contribute to.
-Furthermore, we note that here, $reusability$ does not depend on target user $u$ and thus, it does only measure the $reusability$ of a neighbor with respect to the average user.
+%where $R_n$ is the set of ratings of user $n$ and $U$ is the set of all users.
+where $I_n$ are the items $n$ rated, $U_i$ are the users that rated item $i$, and $U$ is the set of all users.
+Thus, $reusability(n)$ is defined as the summed-up popularity scores of the items $n$ has rated and measures the expected number of a random user's recommendation queries to which $n$ could contribute to as a neighbor. 
+This means that $reusability(n)$ according to our \emph{Popularity} approach measures the reusability of a neighbor with respect to the average user and thus, does not depend on target user $u$. 
 
-\paragraph{Gain}
-When generating an estimated rating score for target user $u$, the recommender system utilizes the ratings $R_n$ of a neighbor $n$.
-In general, the recommender system tries to select those neighbors for a target user, whose rating data could be reused for the target user's future recommendations.
-That means that $R_n$ should cover most of the target user's future queries, i.e., $Q_u$.
-Obviously, the recommender system does not know, for what items target user $u$ will query ratings in the future. 
-Instead of asking how much of a student's future ratings a neighbor could cover, \emph{Gain} asks, how much of a target user's ratings a neighbor could have covered in the past, i.e., how much ratings the target user could have gained from neighbor $n$.
-Thus, \emph{Gain} gives the fraction of a target user $u$'s rated items, for which neighbor $n$ could have provided her rating data, i.e., 
+\vspace{2mm} \noindent \emph{Personalized Neighborhood Reuse: Gain.}
+When generating an estimated rating score for item $i$ and target user $u$, the recommender system utilizes a neighbor $n$'s rating for $i$.
+In general, \emph{ReuseKNN} selects those neighbors for a target user, whose rating data could be reused across multiple of the target user's recommendation queries.
+That means that $n$'s rated items $I_n$ should cover most of the target user $u$'s future recommendation queries, i.e., $Q_u$.
+Obviously, \emph{ReuseKNN} does not know for which items target user $u$ will query ratings in the future. 
+Instead of asking how much of a user's future ratings a neighbor could cover, our \emph{Gain} method asks how much of a target user's ratings a neighbor could have covered in the past, i.e., how much ratings the target user could have gained from neighbor $n$.
+Thus, \emph{Gain} gives the fraction of a target user $u$'s rated items, for which neighbor $n$ could have served as neighbor:
 \begin{equation}
-    reusability(n|u) = \frac{|I_u \cap I_n|}{|I_u|}
+    reusability(n|u) = \frac{|I_u \cap I_n|}{|I_u|} \label{eq:gain}
 \end{equation}
-where $I_u$ are the items rated by target user $u$ and $I_n$ are the items rated by neighbor $n$.
-In contrast to \emph{Popularity}, we underline that \emph{Gain} is a personalized implicit neighborhood selection method, as it calculates the $reusability$ of a neighbor with respect to a specific target user.
-Thus, a neighbor not reusable for one student could be highly reusable for another student.
+where $I_u$ are the items rated by target user $u$.
+In contrast to our unpersonalized \emph{Popularity} method, \emph{Gain} is a personalized neighborhood reuse method, as it calculates $reusability(n|u)$ of a neighbor with respect to a specific target user.
+Thus, a neighbor who is not reusable for one user could be highly reusable for another user.
 
 \subsubsection{Explicit Neighborhood Reuse}
-Contrary to the implicit neighborhood methods presented above, explicit neighborhood reuse methods do not only create an artificial bias for implicitly selecting reusable users as neighbors, but explicitly reuse as many neighbors as possible.
-We highlight that \emph{UserKNN} and all implicit neighborhood reuse methods can be modified to reuse neighbors explicitly.
-In detail, through combination with our explicit neighborhood reuse schema in Algorithm~\ref{algo:explicit_neighborhood}, we obtain our three explicit neighborhood reuse methods, i.e., \emph{UserKNN \& Reuse}, \emph{Popularity \& Reuse}, and \emph{Gain \& Reuse}.
-Specifically, our explicit neighborhood reuse methods only select new neighbors and thus, add new neighbors to the set of mentors, if there are too less existing mentors that could be used for the target user's recommendation.
-In other words, to increase others' privacy by not using those as mentors, our explicit neighborhood reuse methods force the recommender system to reuse a target user $u$'s mentors as neighbors in $u$'s recommendations whenever possible.
-As such, they reuse mentors as neighbors even though there would be other neighbors with a higher similarity.
-Eventually, to generate an estimated rating score, the $k$ most similar mentors are selected in order to foster utility.
-In this regard, the explicit neighborhood reuse methods limit the incorporation of new mentors to a minimum, as such, they place a strong focus on privacy.
+\label{subsubsec:explicit_reuse}
+In contrast to our implicit neighborhood reuse methods, explicit neighborhood reuse methods do not only nudge the recommender system towards selecting reusable neighbors.
+Additionally, as depicted in Equations~\ref{eq:explicit_reuse1} and~\ref{eq:explicit_reuse2}, our explicit neighborhood reuse methods, i.e., \emph{UserKNN+Reuse}, \emph{Popularity+Reuse}, and \emph{Gain+Reuse}, force the recommender system to reuse neighbors even though there would be other users with a higher similarity and thus, accuracy.
+More formally, if $k$ neighbors are used to generate a recommendation for item $i$ and $|N_{u, i}| \geq k$, then:
+\begin{equation}
+    \label{eq:explicit_reuse1}
+    N^k_{u, i} = \stackrel{k}{\argmax_{n \in N_{u, i}}} sim(u, n)
+\end{equation}
+However, if there are too few neighbors in target user $u$'s set of neighbors $N_u$ that could be reused, i.e., $|N_{u, i}| < k$, then $k'$ new neighbors have to be added, where $k' = \max\{ k - |N_{u, i}|, 0 \}$. In detail:  
+\begin{equation}
+    \label{eq:explicit_reuse2}
+    N^k_{u, i} = N^{}_{u, i} \cup \stackrel{k'}{\argmax_{n \in U_i\setminus N_{u, i}}} score(n|u)
+\end{equation}
+where $U_i$ are all users that rated item $i$, and $k'$ additional neighbors with the highest $score$ (cf. Equation~\ref{eq:tradeoff}) are used for the recommendation. 
+In this regard, our explicit neighborhood reuse methods strongly limit the incorporation of new neighbors to a minimum and place a strong focus on privacy.
 
-\begin{algorithm}[!htb]
-    \SetAlgoLined
-    \DontPrintSemicolon
-    \SetKwInOut{Input}{Input}
-    \Input{Target user $u$ that queries estimated rating for item $i$, mentors $M_{s}$ of $u$, neighbors $N_{u, i}$, and number of neighbors $k$ used in a recommendation.}
-    \KwResult{Set $N^k_{s, i}$ of neighbors, used for computing the estimated rating score (cf. Equation~\ref{eq:knn}).}
-    $M_{u, i}$ = $\{u$'s mentors that rated $i\}$ \\
-    $n = \mathrm{max}\{k - M_{u, i}, 0\}$ \\
-    \If{$n > 0$}{
-        Rank all neighbors $n \in N_{u, i} \setminus M_{u, i}$ according to $score(n|u)$ \tcp*{High $score(n|u)$ means high rank}
-        $M^{new}_{u}$ = $\{n$ highest ranked neighbors$\}$ \\
-        $M_{u} = M_{u} \cup M^{new}_{u}$ \\
-        $M_{u, i}$ = $\{u$'s mentors that rated $i\}$ \tcp*{Recompute set of $u$'s mentors that rated $i$}
-    }
-    $N^k_{u, i}$ = $\{$most similar $k$ mentors from $M_{u, i}\}$ \\
-    \Return $N^k_{u, i}$
-    \caption{Explicit Neighborhood Reuse Schema}
-    \label{algo:explicit_neighborhood}
-\end{algorithm}
+\vspace{2mm} \noindent \emph{Naive Neighborhood Reuse: UserKNN+Reuse.}
+Also traditional \emph{UserKNN} can be transformed into an explicit neighborhood reuse method via Equations~\ref{eq:explicit_reuse1} and~\ref{eq:explicit_reuse2}.
+In \emph{UserKNN+Reuse}, neighbors are selected solely based on similarity as in \emph{UserKNN}.
+Additionally, new neighbors are only selected, if a user $u$'s set of neighbors across multiple recommendation queries $N_u$ does not provide enough neighbors that could be used for $u$'s recommendation query.
 
+\vspace{2mm} \noindent \emph{Unpersonalized Neighborhood Reuse: Popularity+Reuse.}
+We can extend our implicit neighborhood reuse method \emph{Popularity} to explicitly reuse a target user $u$'s neighbors for $u$'s recommendation queries.
+In detail, Equations~\ref{eq:explicit_reuse1} and~\ref{eq:explicit_reuse2} force the recommender system to reuse previous neighbors selected by \emph{Popularity} in Equation~\ref{eq:popularity}.
 
+\vspace{2mm} \noindent \emph{Personalized Neighborhood Reuse: Gain+Reuse.} The implicit neighborhood reuse method \emph{Gain} can be extended to an explicit neighborhood reuse method, i.e., \emph{Gain+Reuse} by utilizing Equations~\ref{eq:explicit_reuse1} and~\ref{eq:explicit_reuse2}.
+In detail, neighbors are selected based on \emph{Gain}'s definition of reusability in Equation~\ref{eq:gain}.
+Plus, our explicit neighborhood reuse schema ensures that neighbors are reused whenever possible.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Experimental Setup}
+\emph{ReuseKNN} utilizes five neighborhood reuse methods, which rely on a trade-off between similarity and reusability: %(cf. Equation~\ref{eq:tradeoff}):
+(i) \emph{Popularity}, (ii) \emph{Gain}, (iii) \emph{UserKNN+Reuse}, (iv) \emph{Popularity+Reuse}, and (v) \emph{Gain+Reuse}.
+%As such, we employ Cosine similarity to compute the similarity between two users, as it has been suggested for improving quality of recommendations~\cite{bagchi2015performance}.
+%Each of our five proposed neighborhood reuse methods is evaluated according to three evaluation criteria: (i) the trade-off between users' accuracy and privacy, (ii) the growth of users' neighborhood, and (iii) the bias regarding accuracy and privacy. %\dk{this has a new name below, I like the new one more than this one}\pmu{done} 
+%Furthermore, we evaluate how our neighborhood reuse methods perform for different numbers of neighbors $k$ by conducting experiments for all $k \in [1; 30]$.
+In this regard, we consider traditional \emph{UserKNN} as baseline to which we compare our methods to according to three evaluation criteria.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Evaluation Criteria}
-\subsubsection{Privacy \& Utility}
-As already mentioned above in Section~\ref{subsec:reuseknn}, the paper at hand proposes to reuse neighbors, in order to decrease the number of distinct neighbors, i.e., mentors per user.
-With that, the mentors' privacy increases, since most mentors do not contribute to the recommendations to as many target users as otherwise.
-From this perspective, decreasing the number of target users per mentor corresponds to mentors' decreased susceptibility to inference attacks conducted by malicious target users.
-Therefore, we leverage a mentor $m$'s exposure as a measure for $m$'s privacy
-Specifically, $m$'s exposure $\mathrm{Exposure}$ is the number of target users for which $m$ serves as mentor.
-In detail, 
+\subsubsection{Accuracy-Privacy Trade-Off}
+In order to shed light on the accuracy-privacy trade-off of our \emph{ReuseKNN} recommender system, we measure (i) the accuracy of a user's recommendations and (ii) the extent to which the user's rating data is exposed to other users, i.e., its privacy.
+
+To quantify the accuracy of a user's recommendations, we rely on the widely-used Mean Absolute Error metric  (MAE)~\cite{willmott2005advantages}.
+According to \cite{herlocker1999algorithmic,herlocker2002empirical}, the number of neighbors $k$ impacts the accuracy of a user $u$'s recommendations.
+Thus, we investigate the accuracy of $u$'s recommendations for all $k \in [1; 30]$.
+This means that $\mathrm{MAE}@k(u)$ quantifies the accuracy of target user $u$'s recommendations, when $k$ neighbors are used to generate the recommendation.
+More formally:  
 \begin{equation}
-    \mathrm{Exposure}@k(m) = \sum_{s \in U} \mathbbm{1}_{M_s}(m)
+    \mathrm{MAE}@k(u) = \frac{1}{|R^{test}_u|} \sum_{r_{u, i} \in R^{test}_u} |r_{u, i} - \mathcal{R}^k(u, i)| 
 \end{equation}
-where $U$ is the set of all users and $\mathbbm{1}_{M_u}(m)$ is the indicator function of mentor $m$ being in the set of mentors $M_u$ for target user $u$.
+where the predicted rating scores $\mathcal{R}^k(u, i)$ using $k$ neighbors is compared to the actual rating scores $r_{u, i} \in R^{test}_u$ of target user $u$ in the test set.
+We underline that the items for which $R^{test}_u$ comprises ratings are the ones that $u$ is querying recommendations for, i.e., $u$'s set of recommendation queries $Q_u$.
 
-Furthermore, to measure the quality of a target user's recommendations, i.e., utility, we rely on the widely-used Mean absolute error (MAE).
-We prefer a rating-prediction based measurement, i.e., MAE, over top-$n$ recommendations based measurements, e.g., precision and recall, because the latter kind of measurements often utilize estimated rating scores to rank items.
-As such, measuring the MAE allows a more general measurement of utility.
-The MAE for a user $u$ is calculated by
+Furthermore, we assess a user $n$'s privacy, by quantifying $n$'s exposure to other users.
+Specifically, all users, for which $n$ serves as neighbor, could infer $n$'s rating data, since their recommendations are based on $n$'s rating data.
+Similar to our $\mathrm{MAE}@k(u)$ measurement above, we also correlate $n$'s exposure to the number of neighbors $k$ used in generating recommendations.
+As such, our $\mathrm{Exposure}@k(n)$ measurement counts those users, for which $n$ is within their set of neighbors among multiple recommendation queries, when $k$ neighbors are used for generating recommendations:
 \begin{equation}
-    \mathrm{MAE}@k(u) = \frac{1}{|Q_u|} \sum_{i \in Q_u} |r_{u, i} - \mathcal{R}(u, i)| 
+    \mathrm{Exposure}@k(n) = \sum_{u \in U} \mathbbm{1}_{N_u}(n)
 \end{equation}
-where the recommender system $\mathcal{R}$ utilizes some neighborhood reuse method to select $k$ neighbors to estimate the rating scores for target user $u$'s queries $Q_u$.
+where $U$ is the set of all users and $\mathbbm{1}_{N_u}(n)$ is the indicator function of user $n$ being in target user $u$'s set of neighbors $N_u$. It is noteworthy that if a user is no neighbor for any user, $\mathrm{Exposure}@k = 0$.
+However, it is typical for user-based \emph{KNN} recommender systems such as \emph{UserKNN} and \emph{ReuseKNN} that a user queries recommendations, but also acts as a neighbor and therefore, contributes to recommendations for other users.
 
-\subsubsection{Redistribution of Inference Risk \& Fairness}
-\pmu{if ratio remains at same level for growing k --> k has no effect on distribution privacy/utility tradeoff. if it increases skew of distribution --> privacy/utility tradeoff changes in an unequal way --> is that unfair?}
-\pmu{skew increases -> dist more skewed to high ratios --> more users with low ratio --> option 1: smaller mae, option 2: larger nr of students, option 3: both. That means: some users stay at same level of privacy-utility, others get either better utility, or worse privacy, or both.}
-\pmu{does our solution increase unfairness? unfairness is prevalent --> different ratios. if skew increases or decreases --> more unfairness}
+\subsubsection{Neighborhood Growth}
+For every recommendation query of a target user $u$, the recommender system requires $k$ neighbors to generate the recommendation.
+In the worst case, $k$ neighbors are added to $u$'s set of neighbors $N_u$ for each recommendation query.
+Thus, after $q$ queries, $N_u$ comprises $|N_u| = \min\{ q \cdot k, |U|-1 \}$ neighbors.
+In the best case, $u$ reuses the same $k$ neighbors for all $q$ queries, i.e., $|N_u| = k$.
+To quantify how many of $u$'s neighbors are reused when it successively queries new recommendations, we measure the size of $u$'s neighborhood after $q$ recommendation queries with
 \begin{equation}
-    \mathrm{ratio}@k(u) = \frac{\mathrm{MAE}@k(u)}{\mathrm{Students}@k(u)}
+    \mathrm{Neighbors}@q(u) = |N^{(q)}_u|
 \end{equation}
+where $N^{(q)}_u$ is $u$'s set of neighbors after $q$ recommendation queries.
+With that, we test how our proposed neighborhood reuse methods influence the extent to which the recommender system reuses a target user's neighbors. 
 
-\pmu{$\mathrm{skew}(\mathrm{ratio}@k)$~\cite{kokoska2000crc}}
+\subsubsection{Neighborhood Bias}
+\label{subsubsec:acc_priv_bias}
+Our novel \emph{ReuseKNN} recommender system relies on reusing a target user's neighbors for generating recommendations.
+More detailed, in Figure~\ref{fig:approach}, \emph{ReuseKNN} reuses \emph{Alice}'s neighbor \emph{Bob}.
+As such, it redirects \emph{Alice}'s recommendation queries from other neighbors, i.e., \emph{John} and \emph{Tim}, to \emph{Bob}.
+On the one hand, \emph{Alice}'s recommendations are based on a different neighborhood than in traditional \emph{UserKNN}, i.e., accuracy of \emph{Alice}'s recommendation depends solely on \emph{Bob}.
+On the other hand, \emph{John}'s and \emph{Tim}'s privacy is increased, as they are no longer exposed to \emph{Alice}, whereas \emph{Bob} remains exposed.
+Therefore, we underline that \emph{ReuseKNN} influences accuracy of recommendations for target users and privacy of neighbors.
 
-\subsubsection{Influence of Mentors}
-\pmu{reliance on small set of mentors --> additional privacy threat? No!}
-
-For two recommender system models, i.e., $\mathcal{P}$ and $\mathcal{F}$, the influence of mentor $m$ on the MAE is given by
+In our example above, all of target user \emph{Alice}'s recommendations are based on neighbor \emph{Bob}.
+One might be concerned with whether also other target users reuse \emph{Bob}. 
+As such, \emph{ReuseKNN} would use the same neighborhood not only for \emph{Alice}, but also for other target users.
+To test whether \emph{ReuseKNN} introduces such a neighborhood bias, we resort to the users' accuracy-privacy trade-off distribution, since this neighborhood bias would influence both, accuracy of a user's recommendations and its privacy.
+In detail, if a neighborhood bias exists, users' accuracy-privacy trade-off distribution in \emph{ReuseKNN} would differ from the trade-off distribution in \emph{UserKNN}.
+Thus, We utilize our $\Delta\text{TradeOff}@k_\nu(u)$ measurement to identify the extent to which \emph{ReuseKNN} preserves the distribution of the users' accuracy-privacy trade-offs.
+$\text{TradeOff}@k_\nu(k)$ relies on our formalization of the accuracy-privacy trade-off in Equation~\ref{eq:tradeoff} and measures a user $u$'s trade-off in terms of $\mathrm{MAE}@k(u)$ and $\mathrm{Exposure}@k(u)$.
+Then, we measure the change of $u$'s trade-off by one of our neighborhood reuse methods $\nu$ by computing the absolute difference to $u$'s trade-off in \emph{UserKNN} as given by: 
+\begin{align}
+    \text{TradeOff}@k_\nu(u) &= \lambda \cdot rank(\mathrm{MAE}@k(u)) + (1 - \lambda) \cdot rank(\mathrm{Exposure}@k(u)) \\
+    \Delta \text{TradeOff}@k_\nu(u) &= |\text{TradeOff}@k_\nu(u) - \text{TradeOff}@k_{UserKNN}(u)|
+\end{align}
+where $k \in [1; 30]$ is the number of neighbors used to generate recommendations and $\lambda=0.5 $.
+However, $\Delta \text{TradeOff}@k_\nu(u)$ only indicates how much neighborhood reuse method $\nu$ changes the accuracy-privacy trade-off of a single user $u$.
+In order to measure how well \emph{ReuseKNN} preserves \emph{UserKNN}'s accuracy-privacy trade-off distribution among users, we utilize the widely-used Gini-index.
+The Gini-index requires values to be within the range $[0; 1]$, thus, we normalize our $\Delta \text{TradeOff}@k_\nu$ distribution via Min-Max scaling.
+Additionally, we note that in our work, the Gini-index is computed as half of the relative mean absolute difference of our $\Delta \text{TradeOff}@k_\nu$ distribution~\cite{sen1997economic}
 \begin{equation}
-    \mathrm{influence}@k(m) = \frac{1}{|U|}\sum_{u \in U} \big[ \mathrm{MAE}@k_{\mathcal{P}}(u) - \mathrm{MAE}@k_{\mathcal{F}}(u) \big]
+    \mathrm{Gini}@k_\nu = \frac{1}{2}\cdot\frac{\sum_{u \in U} \sum_{v \in U} | \Delta \text{TradeOff}@k_\nu(u) - \Delta \text{TradeOff}@k_\nu(v) |}{|U| \cdot \sum_{u \in U} \Delta \text{TradeOff}@k_\nu(u)}
 \end{equation}
-where $\mathcal{P}$ is the recommender system model trained on partial data, i.e. without $m$'s training data and $\mathcal{F}$ is the recommender system model trained on the full training set, i.e., with $m$'s training data.
+where $U$ is the set of all users, $\nu$ is one of our implicit and explicit neighborhood reuse methods utilized in our \emph{ReuseKNN} recommender system, and $k \in [1;30]$ is the number of neighbors on which a recommendation is based on. 
+We stress that $\mathrm{Gini}@k_\nu \approx 1$ indicates that neighborhood reuse method $\nu$ changes users' accuracy-privacy trade-off distribution substantially and thus, \emph{ReuseKNN} is biased towards a certain neighborhood.
+That means that the same neighborhood is reused among all target users.
+In contrast, with $\mathrm{Gini}@k_\nu \approx 0$, $\nu$ preserves the distribution of users' trade-offs and as such, does not create a bias towards some neighbors. 
+Therefore, \emph{ReuseKNN} is not biased and target users' have their own distinct set of neighbors they reuse.
 
 \subsection{Datasets}
-We conduct experiments on four different datasets, i.e., \emph{MovieLens 100k}\cite{harper2015movielens}, \emph{MovieLens 1M}~\cite{harper2015movielens}, \emph{Jester}~\cite{goldberg2001eigentaste}, and \emph{Goodreads}~\cite{DBLP:conf/recsys/WanM18,DBLP:conf/acl/WanMNM19}.
+We conduct experiments on four different datasets: The movie rating datasets \emph{MovieLens 100k} and \emph{MovieLens 1M}~\cite{harper2015movielens}, the joke rating dataset \emph{Jester}~\cite{goldberg2001eigentaste}, and the book rating dataset \emph{Goodreads}~\cite{DBLP:conf/recsys/WanM18,DBLP:conf/acl/WanMNM19}.
+We use the standard versions of the \emph{MovieLens 100k} and \emph{MovieLens 1M} datasets and thus, only users with at least 20 ratings are included. We also apply this preprocessing step to our two remaining datasets, i.e., \emph{Jester} and \emph{Goodreads}.
+Additionally, we randomly sample 5,000 users from \emph{Jester} and 2,500 users from \emph{Goodreads}.
 
-\begin{table}[!htb]
+\begin{table}[!t]
     \centering
-    \begin{tabular}{l r r r r r r}
+    \begin{tabular}{l@{\hskip .6cm} l@{\hskip .3cm} |@{\hskip .3cm} r@{\hskip .6cm} r@{\hskip .6cm} r@{\hskip .6cm} r@{\hskip .6cm} r@{\hskip .6cm} r}
         \toprule
-        Dataset & $|U|$ & $|I|$ & $|R|$ & Density & Avg. $|R| / |U|$ &  Avg. $|R| / |I|$ \\ \midrule
-        MovieLens 100k & 943 & 1,682 & 100,000 & 6.3\% & 106.0 & 59.5 \\
-        MovieLens 1M & 6,040 & 7,921 & 1,000,000 & 1.7\% & 165.6 & 269.9 \\
-        Jester & 5,000 & 100 & 299,975 & 60.0\% & 59.9 & 2,999.8 \\
-        Goodreads & 2,500 & 308,930 & 866,394 & 0.1\% & 346.6 & 2.8 \\ \bottomrule
+        Dataset & Domain & $|U|$ & $|I|$ & $|R|$ & Avg. $|R| / |U|$ &  Avg. $|R| / |I|$  & Density \\ \midrule
+        MovieLens 100k & Movies & 943 & 1,682 & 100,000 & 106.0 & 59.5 & 6.3\% \\
+        MovieLens 1M & Movies & 6,040 & 7,921 & 1,000,000 & 165.6 & 269.9 & 1.7\% \\
+        Jester & Jokes & 5,000 & 100 & 299,975 & 59.9 & 2,999.8 & 60.0\% \\
+        Goodreads & Books & 2,500 & 308,930 & 866,394 & 346.6 & 2.8 & 0.1\% \\ \bottomrule
     \end{tabular}
-    \caption{Descriptive statistics of the four datased used in this study. $|U|$ is the number of users, $|I|$ is the number of items, $|R|$ is the number of ratings, Density denotes the density of the rating matrix, Avg. $|R| / |U|$ is the average number of ratings per user, and Avg. $|R| / |I|$ is the average number of ratings per item. Please note that we utilize a random sample of 5,000 users for Jester and a random sample of 2,500 users for Goodreads.}
+    \caption{Descriptive statistics of the four datasets used in this study. $|U|$ is the number of users, $|I|$ is the number of items, $|R|$ is the number of ratings, Density denotes the density of the rating matrix, Avg. $|R| / |U|$ is the average number of ratings per user, and Avg. $|R| / |I|$ is the average number of ratings per item.}
+    \label{tab:datasets}
 \end{table}
 
+Descriptive statistics of all four datasets can be found in Table~\ref{tab:datasets}.
+It is worth noticing that our four datasets exhibit different properties.
+For example, \emph{MovieLens 1M} comprises not only a large number of ratings per user, but also a large number of ratings per item.
+\emph{Jester} is a dataset with a very large number of ratings per item, a low number of ratings per user, and a high density.
+Furthermore, \emph{Goodreads} includes lots of ratings per user, a very small number of ratings per item, and has a low density.
+Plus, \emph{MovieLens 100k} serves as widely-known baseline dataset.
 
+To further increase expressiveness of our findings, we perform all experiments using 5-fold cross-validation, where all folds are randomly split into 80\% training sets $R^{train}$ and 20\% test sets $R^{test}$. Here, the ratings in $R^{train}$ are used to train the recommendation algorithms and the ratings in $R^{test}$ represent the recommendation queries used for evaluation.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
-\dk{I guess, we have three patterns of results (i) the accuracy vs. outdegree/path length plots, (ii) the skewness plots, and (iii) the analysis of our re-used neighbors vs. the influential users based on the The Power of the Few paper}
+The presentation of our results are in line with the three evaluation criteria described in the previous section.
 
-\pmu{Our methods achieve better utility, why? Why is that no problem in regard to our following experiments?}
-\pmu{First privacy measure. Whats the problem with that? refer to threat model.}
-\pmu{Solution is the second measurement. What have we solved so far? --> path length with alpha (realistic setting)}
-\pmu{skewness of ratio dist, refer to fairness, ... Good utility in exchange for good privacy?}
-In Figure~\ref{fig:mae_vs_students}, the tradeoff between the MAE and the data leakage is illustrated for five different neighborhood-selection strategies.
-As a baseline, we make use of standard $k$-nearest neighbors (KNN), in which a user $u$'s neighborhood is defined as the most similar users that have rated the item desired by $u$.
-First, we observe that for all strategies, it is possible to decrease the number of students whilst preserving a low MAE.
-However, it is noteworthy that our proposed strategies yield a far better privacy-utility tradeoff, since they assign a mentor to less students.
-Most prominently, this behavior can be observed in settings, in which the MAE only slightly increases.
-This is a clear advantage, since one does only have to trade a small amount of accuracy for a far better degree of privacy.
-Employing a bias towards power-users and reusing neighbors yields the best results.
-We note that the exhibited improvements of our strategies vanish with increasing MAE.
-This may seem unintuitive at first sight.
-However, large MAE scores typically occur when only a very few mentors (i.e., neighbors) contribute to a user's recommendation.
-Thus, our proposed strategies are not able to advance the baseline given this small number of mentors.
+\subsection{Accuracy-Privacy Trade-Off}
+The visualizations in Figure~\ref{fig:results_trade-off} illustrate the trade-off between $\mathrm{MAE}$ and $\mathrm{Exposure}$, i.e., the trade-off between accuracy and privacy, of our neighborhood reuse methods.
+It is noteworthy that $\mathrm{MAE}$ and $\mathrm{Exposure}$ represent the $\mathrm{MAE}@k(u)$ and the $\mathrm{Exposure}@k(u)$ measurement respectively, averaged across all users. 
+Furthermore, we visualized this relationship between $\mathrm{MAE}$ and $\mathrm{Exposure}$ for all number of neighbors $k \in [1; 30]$.
+Ideally, both, $\mathrm{MAE}$ and $\mathrm{Exposure}$ decrease, or alternatively, $\mathrm{Exposure}$ decreases with only marginally increasing $\mathrm{MAE}$.
+Thus, the closer the plots lie to the bottom-left corner within our visualizations, the better.
 
-\begin{figure}
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=0.6\linewidth]{figures/ml-100k/k_vs_mae.png}
-    \caption{Relationship between the mean absolute error and the number of neighbors $k$. Here, we compare traditional similarity-based neighborhood with our neighborhood strategies. We want to highlight that with our strategies, the behavior of UserKNN does not change whether neighbors are reused or not.}
-    \label{fig:k_vs_mae}
+    \includegraphics[width=\linewidth]{figures/tradeoff.pdf}
+    \caption{The relationship between MAE and Exposure illustrating the accuracy-privacy trade-off for the baseline \emph{UserKNN} and our neighborhood reuse methods utilized in \emph{ReuseKNN}. As can be seen, our methods exhibit less Exposure for less increase of MAE compared to traditional \emph{UserKNN} and as such, improve users' accuracy-privacy trade-offs. In general, the explicit and personalized \emph{Gain+Reuse} method yields the best results. However, \emph{UserKNN+Reuse} for \emph{Jester} and \emph{Gain} for \emph{Goodreads} yield marginally better $\mathrm{MAE}$ than \emph{Gain+Reuse} but substantially increase $\mathrm{Exposure}$. Furthermore, we highlight that for \emph{MovieLens 1M}, \emph{Gain+Reuse} keeps \emph{UserKNN}'s level of accuracy, but only for less than 10\% of its Exposure.
+    }
+    \label{fig:results_trade-off}
 \end{figure}
 
-\begin{figure}[!htb]
+As we can see, traditional \emph{UserKNN} yields the worst accuracy-privacy trade-off for all four datasets.
+Naively extending traditional \emph{UserKNN} with explicit neighborhood reuse, i.e., \emph{UserKNN+Reuse}, results in a substantial improvement.
+For all of our remaining neighborhood reuse methods, it is possible to decrease the Exposure whilst preserving a low MAE.
+Furthermore, it is important to note that explicit neighborhood reuse methods always lead to a better accuracy-privacy trade-off than its implicit counterpart.
+This supports our intuition that reusing neighbors corresponds to decreased exposure of users.
+Moreover, among our neighborhood reuse methods, the personalized and implicit \emph{Gain} method and the personalized and explicit \emph{Gain+Reuse} method perform best.
+This observation indicates that personalized neighborhood reuse methods are beneficial in terms of decreasing users' exposure whilst keeping accurate recommendations.
+For the \emph{Jester} dataset, \emph{Popularity}, \emph{Popularity+Reuse}, \emph{Gain}, and \emph{Gain+Reuse} perform equally well.
+Thus, for \emph{Jester}, there is no advantage of using explicit neighborhood reuse methods over implicit neighborhood reuse methods, plus, personalized neighborhood reuse methods are not beneficial over unpersonalized neighborhood reuse methods.
+Due to this dataset comprising only 100 items, we hypothesize that personalization cannot improve recommendations substantially, since all users rated a similar set of items.
+In the same vein, also explicit neighborhood reuse methods are not able to yield any further improvement, as the average user already rated 60\% of items. 
+That means that the implicit neighborhood reuse methods provide a neighborhood that already rated most items a user could query recommendations for.
+Thus, we conclude that for a dataset with a very limited number of items, e.g., \emph{Jester}, personalized and explicit neighborhood reuse methods are not beneficial over unpersonalized and implicit neighborhood reuse methods.
+
+\begin{figure}[!t]
     \centering
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/ml-100k/outdegree_vs_mae.png}}
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/ml-100k/skew_vs_k.png}}
-    \caption{Experiments on the MovieLens 100k dataset. (a) Average outdegree of the sharing network plotted over the MAE for k=30 - 1 nearest neighbors built by our strategies with and without neighborhood reusage. 
-    On average, our proposed neighborhood strategies yield a strongly increased level of privacy, whilst preserving utility. (b) Skewness of the ratio distribution, i.e., a user's mean absolute error divided by her number of students. Caused by the popularity biased dataset, the similarity-based neighborhood exhibits a peak for a small number of neighbors $k$. This behavior vanishes due smoothing by large $k$.
-    In contrast, our proposed neighborhoods increase the right-skewness of the ratio distribution for increasing $k$.
-    As we can assume the mean absolute error to stabilize for large $k$, we hypothesize that this skewness represents a substantial discrepancy in the number of students per user.}
+    \includegraphics[width=\linewidth]{figures/neighborhood.pdf}
+    \caption{The average number of neighbors per user after querying $q$ recommendations. Here, for \emph{MovieLens 100k}, \emph{MovieLens 1M}, and \emph{Goodreads}, we only visualize the average $\mathrm{Neighbors}@q$ for $q \leq 100$.
+    \emph{Jester} comprises only 30 queries due to its small set of items. 
+    Furthermore, we utilize $k=10$ neighbors to generate recommendations for this experiment. 
+    We note that the average $\mathrm{Neighbors}@q$ increases more strongly for \emph{UserKNN} than for our implicit and explicit neighborhood reuse methods utilized in our \emph{ReuseKNN} recommender system. Furthermore, the explicit and personalized \emph{Gain+Reuse} and the explicit and unpersonalized \emph{Popularity+Reuse} methods perform best with respect to limiting the growth of users' neighborhood.}
+    \label{fig:results_neighborhood}
 \end{figure}
 
-\begin{figure}[!htb]
+\subsection{Neighborhood Growth}
+To increase privacy of users, our novel \emph{ReuseKNN} recommender system utilizes neighborhood reuse methods to reduce the neighborhood $N_u$ of a target user $u$.
+As such, users are required to participate in the generation of recommendations for less target users and thus, their exposure is reduced, which leads to increased privacy.
+Figure~\ref{fig:results_neighborhood} illustrates the average size of users' neighborhood after querying $q$ recommendations. 
+For all of our four datasets, traditional \emph{UserKNN} performs worst.
+That means that the number of a user's neighbors strongly increases for \emph{UserKNN}, which is not the case for our neighborhood reuse methods.
+Especially after the first few recommendation queries, our neighborhood reuse methods yield substantially smaller neighborhoods than \emph{UserKNN}.
+In general, it is noteworthy that \emph{Popularity} and \emph{Gain} reuse neighbors to the same degree, which means that they equally increase users' privacy.
+In our previous results regarding the accuracy-privacy trade-off in Figure~\ref{fig:results_trade-off}, we observed that \emph{Gain} yields a better trade-off than \emph{Popularity}.
+Since both methods equally increase privacy, this means that our personalized \emph{Gain} approach is able to persist higher accuracy than our unpersonalized \emph{Popularity} approach.
+This also means that \emph{Gain+Reuse} is advantageous over \emph{Popularity+Reuse}.
+
+Since our neighborhood reuse methods outperform traditional \emph{UserKNN} only after the first few recommendation queries, we suspect that they utilize the first few recommendation queries to build a sufficiently reusable neighborhood.
+After this phase, our neighborhood reuse methods exploit this well-formed neighborhood of a target user $u$ and minimize the growth of $u$'s neighborhood $N_u$.
+This effect is most prominent for \emph{Jester}.
+Here, \emph{UserKNN} increases the average number of a user's neighbors constantly even after multiple recommendation queries.
+For our neighborhood reuse methods, the average size of the neighborhood only increases marginally after the first few recommendation queries. 
+Hence, most succeeding recommendations are generated based on reused neighbors in our novel \emph{ReuseKNN} recommender system.
+
+\begin{figure}[!t]
     \centering
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/ml-1m/outdegree_vs_mae.png}}
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/ml-1m/skew_vs_k.png}}
-    \caption{Experiments on the MovieLens 1M dataset. \pmu{strong popularity bias}}
+    \includegraphics[width=\linewidth]{figures/gini.pdf}
+    \caption{The number of neighbors used for generating recommendations plotted over the degree to which our neighborhood reuse methods show a neighborhood bias, as measured by the Gini-index of the $\Delta \text{TradeOff}@k$ distribution. 
+    It can be seen that naively reusing neighbors in traditional \emph{UserKNN}, i.e., \emph{UserKNN+Reuse}, yields to a severe bias towards some neighbors.
+    In contrast, our neighborhood reuse methods tend to preserve users' accuracy-privacy trade-offs. In the case of \emph{Jester}, we observe that the neighborhood bias diminishes when the number of neighbors increases. Thus, target users' tend to have different neighborhoods.
+    }
+    \label{fig:results_gini}
 \end{figure}
 
-\begin{figure}[!htb]
-    \centering
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/jester/outdegree_vs_mae.png}}
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/jester/skew_vs_k.png}}
-    \caption{Experiments on the Jester dataset. \pmu{weak popularity bias}}
-\end{figure}
+\subsection{Neighborhood Bias}
+Our proposed \emph{ReuseKNN} recommender system utilizes a small set of reused neighbors, which is different to the neighborhood utilized by \emph{UserKNN}.
+In particular, we outlined in Section~\ref{subsubsec:acc_priv_bias} that for a single target user, \emph{ReuseKNN} influences accuracy of target users' recommendations and privacy of neighbors.
+To test whether \emph{ReuseKNN} tends to reuse the same neighborhood for all target users, i.e., neighborhood bias, we proposed our $\mathrm{Gini}@k_\nu$ measurement.
+%Furthermore, we proposed our $\mathrm{Gini}@k_\nu$ measurement that quantifies to what extent the distribution of the users' accuracy-privacy trade-offs generated by neighborhood reuse method $\nu$'s is different from the distribution generated by traditional \emph{UserKNN}.
+The closer $\mathrm{Gini}@k_\nu$ is to 0, the better $\nu$ preserves the accuracy-privacy trade-off distribution of \emph{UserKNN} and the less biased $\nu$ is towards the same set of neighbors.
+%More detailed, the distribution of users' accuracy-privacy trade-offs generated by \emph{ReuseKNN} with neighborhood reuse method $\nu$ is not biased towards a small set of neighbors.
 
-\begin{figure}[!htb]
-    \centering
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/goodreads/outdegree_vs_mae.png}}
-    \subfloat[t][]{\includegraphics[width=0.49\linewidth]{figures/goodreads/skew_vs_k.png}}
-    \caption{Experiments on the Goodreads dataset. \pmu{extremely strong popularity bias, but no ratings}}
-\end{figure}
+In Figure~\ref{fig:results_gini}, we relate $\mathrm{Gini}@k$ to the number of neighbors $k$ used for generating recommendations.
+It can be observed that naively reusing neighbors in traditional \emph{UserKNN}, i.e., \emph{UserKNN+Reuse}, leads to the strongest bias, i.e., high $\mathrm{Gini}@k$ values.
+In contrast, \emph{Popularity}, \emph{Popularity+Reuse}, \emph{Gain}, and \emph{Gain+Reuse} are less biased, i.e., low $\mathrm{Gini}@k$ values.
+Interestingly, for \emph{Jester}, the bias decreases, if more neighbors are used for generating recommendations.
+For all remaining datasets, i.e., \emph{MovieLens 100k}, \emph{MovieLens 1M}, and \emph{Goodreads}, the opposite is true.
+The strong bias indicates that \emph{ReuseKNN} is biased towards some neighbors, i.e., the accuracy-privacy trade-off distribution is different to \emph{UserKNN}.
+We suspect that the larger $k$, the higher the probability that some reusable users are neighbors of most target users.
+This leads to those neighbors being increasingly exposed to lots of target users and thus, leading to a severe bias towards them. 
+The absence of this effect for \emph{Jester} could be explained by the low number of items within this dataset. 
+In detail, we hypothesize that due to users providing ratings for on average 60\% of items, a target user $u$ could reuse its neighbors and does not need to add new neighbors.
+It makes sense that $\mathrm{Exposure@k(n)}$ of users does not change, if their neighborhoods do not change.
+Therefore, the low number of items in the \emph{Jester} dataset leads to not adding new neighbors to users' neighborhoods, which means that the distribution of accuracy-privacy trade-offs remains similar to the one of traditional \emph{UserKNN}.
 
-\begin{table}[!htb]
-    \centering
-    \begin{tabular}{l r r}
-        \toprule
-        Method & Avg. Influence & Avg. Degree \\ \midrule
-        UserKNN & 0.2541/0.2340 & 73.6000/81.7328 \\ 
-        UserKNN + Reuse & 0.2360/0.2172 & 50.2000/47.4804 \\
-        Popularity & 0.1778/0.1307 & 117.8000/42.7253 \\
-        Popularity + Reuse & 0.1817/0.1387 & 14.7000/ 32.4115\\
-        Gain & 0.1574/0.1338 & 60.6000/39.0498 \\
-        Gain + Reuse & 0.1599/0.1414 & 56.2000/31.0467 \\ \bottomrule
-    \end{tabular}
-    \caption{ML-100k, Avg. influence (top 10 mentors/all users) and avg. number of students (top 10 influential users/all users) for $k=7$. }
-\end{table}
-
-\begin{figure}[!htb]
-    \centering
-    \subfloat[t][$k=5$]{\includegraphics[width=0.49\linewidth]{figures/ml-100k/nmentors_k5_online.png}}
-    \subfloat[t][$k=30$]{\includegraphics[width=0.49\linewidth]{figures/ml-100k/nmentors_k30_online.png}}
-    \caption{ML-100k nr. of mentors per nr. of querys. Nr. of queries is NOT the test set size, but really the queries}
-\end{figure}
-
-\iffalse
-\begin{table}[!htb]
-    \centering
-    \begin{tabular}{l l c c c}
-        \toprule
-        & Method & Performance & Fairness & Influence \\ \midrule
-        Baseline & UserKNN & - - - & ++ & - - - \\ \midrule
-        \multirow{2}{*}{Implicit} & Popularity & - - & - & + \\
-        & Gain & ++ & - - - & +++ \\ \midrule
-        \multirow{3}{*}{Explicit} & UserKNN \& Reuse & - & +++ & - -\\
-        & Popularity \& Reuse & + & + & - \\
-        & Gain \& Reuse  & +++ & - - & ++ \\ \bottomrule
-    \end{tabular}
-    \caption{\pmu{how to construct ranking? Avg. over all k? No. --> Consider diff. budgets: 1, 5, 10 \& loss in utility. measure relative to baseline.}}
-    \label{tab:my_label}
-\end{table}
-\fi
-
-\pmu{Shortcomings of Gain: Measures the fraction of a student's rated items in the trainset, a mentor covers ($|I^{mentor}_{train} \cap I^{student}_{train}| / |I^{student}_{train}|$). We choose the mentor that has the highest coverage of a student. The problem occurs, if the mentor rated exactly the same items as the student ($I^{mentor}_{train} = I^{student}_{train}$). Then, the gain is maximal at 1, but we cannot use this mentor in the future, since the student already used all of the mentor's data in the training phase.}
-\pmu{Possible solution (hypothesis): Implicit bias towards strongly active users. A student has $n$ ratings, the probability that a mentor covers all items of a student is high, if the number of ratings of the mentor is higher than $n$. (Does not consider conditional probability of rating an item.)}
-\pmu{Interpretation of Gain: We want to know if mentor is beneficial in the future, we cannot estimate the future, thus, we test whether the mentor would have been beneficial in the past.}
 
 \section{Related Work}
-\pmu{Data diffusion. We use a family of graphs --> Newman-Watts-Strogatz model. Construction of social graph with haddocks in recommender network --> draw line to neighborhood}
-\pmu{In what cases do existing privacy enhancing techniques not work?}
+With increasing popularity of real-world recommender systems, research discovered a multitude of severe privacy issues.
+In particular, \cite{shyong2006you} listed three privacy-related problems in collaborative filtering: (i) Exposing users' data, (ii) Maliciously influencing what is recommended, and (iii) Sabotaging the recommender system to generate low-accuracy recommendations.
+In our work at hand, we focus on the issue of exposing a user's rating data to other users, without consent of the affected users, i.e., data breaches, in user-based \emph{KNN} recommender systems. Additionally, we review related research in the area of privacy-aware recommender systems.
 
-\paragraph{\dk{Privacy-aware recommender systems.}}
+%Furthermore, privacy-aware recommender systems have been developed, to increase users' privacy.
+%Here, the majority of state-of-the-art research utilizes concepts like \emph{Homomorphic Encryption}~\cite{gentry2009fully}, \emph{Differential Privacy}~\cite{dwork2014algorithmic}, or \emph{Federated Learning}~\cite{konevcny2015federated,mcmahan2017communication}.
 
-\paragraph{\dk{Data breaches in recommender systems.}}
+\vspace{2mm} \noindent \emph{Data breaches in recommender systems.}
+\cite{ramakrishnan2001being} pinpoint the generation of recommendations by a target user's neighbors as severe threat to its neighbors' privacy.
+Serendipitous recommendations yield a unique connection between target user and its neighbors.
+This unique connection moreover, could uncover neighbors' rating data, or even reveal the identity of them within the recommendation database.
+Furthermore, the authors find that through probing, i.e., adding specific ratings and querying recommendations, a target user could actively increase the risk of compromising its neighbors' privacy.
+Among other attacks,  \cite{calandrino2011you} propose so called \emph{Sybil}-attacks in user-based \emph{KNN} recommender systems, in which limited knowledge of a victim's data is utilized to construct $k$ fake users, i.e., \emph{Sybils}, with high similarity to the victim.
+In detail, the $k$-th \emph{Sybil} queries a recommendation and thus, its neighborhood likely comprises the $k-1$ remaining \emph{Sybils} and the victim.
+By observing the recommendation through the $k$-th \emph{Sybil}, an attacker could easily cancel out the contribution of the $k-1$ \emph{Sybils} and reveal the rating data of the victim.
+However, \cite{frey2015collaborative} show that this attack's effectiveness strongly depends on the amount of knowledge of the victim's data.
+This knowledge by itself already poses a breach of the victim's privacy.
+Moreover, the victim's data could also be utilized to infer sensitive and private attributes.
+For example, \cite{weinsberg2012blurme} trained a classifier on data from a small set of users, who provided their gender.
+Then, they demonstrate that by applying their classifier on other users' rating data, one could easily infer the gender of 80\% of these users.
 
-\paragraph{\dk{Data diffusion in collaborative filtering.} \el{Structural properties of recommendation networks}}
+
+\vspace{2mm} \noindent \emph{Privacy-aware recommender systems.}
+\cite{badsha2017privacy} encrypt users' data with a \emph{Homomorphic Encryption}~\cite{gentry2009fully} scheme.
+Specifically, the recommender system generates recommendations based on the encrypted data, which is subsequently decrypted by the target user.
+As such, users' data is not exposed to the recommender system, or to other users.
+\emph{Homomorphic Encryption}'s strong privacy guarantees also leads to its suitability within sensitive domains, e.g., medical data~\cite{zhang2021privacy}.
+However, one problem of \emph{Homomorphic Encryption} is its poor efficiency.
+To alleviate this issue, \cite{tang2016privacy,kikuchi2012accuracy} utilize a variant with lower privacy guarantees, but improved efficiency.
+Parallel to \emph{Homomorphic Encryption}, also \emph{Differential Privacy}~\cite{dwork2014algorithmic} and obfuscation have been used to develop privacy-aware recommender systems.
+In general, random noise is added to users' rating data to hide its real value.
+However, \cite{berkovsky2012impact} demonstrate that data obfuscation seriously impacts the accuracy of recommendations.
+Therefore, the level of random noise has to be fine-tuned to ensure privacy whilst not compromising the accuracy of recommendations~\cite{mcsherry2009differentially}.
+In the same vein, \cite{meng2018personalized} utilize different noise levels depending on the sensitivity of data.
+On sensitive data, noise and thus, privacy, shall be increased, whereas for non-sensitive data, a lower level of noise is sufficient.
+Additionally, in \emph{Matrix Factorization} for example, noise could not only be added to users' data, but also to the gradient and the recommender system's output~\cite{berlioz2015applying}.
+Research also utilized \emph{Differential Privacy} to construct privacy-aware user-based \emph{KNN} recommender systems~\cite{lu2015security,zhu2014effective}.
+However, \cite{okkalioglu2016reconstructing} show that obfuscated data could be reconstructed, if the obfuscation is performed inconsistently.
+%In contrast, multiple privacy-aware recommender systems do not obfuscate the data to protect users' privacy, but instead, rely on modifications to their architecture.
+%In detail, \cite{wang2015decentralized} and~\cite{kermarrec2010application} present decentralized recommender systems, in which data and computation are distributed among users.
+%As such, no central server is needed and thus, privacy is increased due to the absence of a single point of data breach.
+%\cite{duriakova2019pdmfrec} go one step further and propose a \emph{Decentralized Matrix Factorization} framework, in which only non-sensitive information are shared among a user's neighbors.
+%Specifically, only the updates to the item-factors are shared and thus, the more sensitive user-factors are protected.
+Recent research does not obfuscate data but takes another approach by utilizing \emph{Federated Learning}~\cite{ammad2019federated,chen2018federated}.
+Here, users do not share their data with the recommender system, but share only their updates to the model.
+This way, no data ever leaves the user's device and as such, it is protected against breach.
+However, we note that \emph{Federated Learning} is prone to a multitude of attacks that could compromise a user's privacy~\cite{nasr2019comprehensive}.
+Therefore, recent research works~\cite{anelli2021put,robustnessofmetamf} propose to allow users to reduce the amount of data they share with the recommender system.
+Additionally, both works provide evidence that only a small fraction of a user's data is needed to provide highly-accurate recommendations.
+
+These works aimed to increase a user's privacy by reducing its data.
+In our work, we go into a similar direction, but instead of addressing the accuracy-privacy trade-off by reducing a user's data, we aim to address this trade-off by reducing a user's exposure to other users.
+
+
 
 \section{Conclusion \& Future Work}
-\pmu{mentors = better neighbors? --> test on other methods, e.g., mf}
-\pmu{correlation between dataset charachteristics and performance, e.g., item popularity, density, ...}
+This study presents the privacy-benefit of reusing neighbors in user-based \emph{KNN} recommender systems.
+We outlined our novel \emph{ReuseKNN} recommender system and leveraged a trade-off between similarity and reusability as proxy to users' accuracy-privacy trade-offs.
+Moreover, we demonstrated \emph{ReuseKNN} on four diverse datasets from different domains and illustrated its superiority in terms of users' accuracy-privacy trade-off to traditional \emph{UserKNN}.
+In detail, by rendering a neighbor's reusability dependent of the target user, we found that \emph{ReuseKNN} substantially improves users' privacy at no or only marginal cost of accuracy.
+Furthermore, experiments showed that the growth of a user's neighborhood is far more limited than in traditional \emph{UserKNN}.
+Plus, we provided strong evidence that even though a single target user's recommendations rely on a small neighborhood, \emph{ReuseKNN} does not bias recommendations for many target users on the same set of neighbors.
+Instead, we concluded that \emph{ReuseKNN} generates distinct neighborhoods for each individual target user.
+Our \emph{ReuseKNN} recommender system exploits reusage of neighbors to increase users' privacy.
+With that we desire to give an example of how simple modifications of the inner workings of traditional recommendation algorithms could alleviate their users' privacy issues.
 
-\section{Acknowledgements}
-\pmu{This work is supported by the H2020 project TRUSTS (GA:871481)} and the ``DDAI'' COMET Module within the COMET – Competence Centers for Excellent Technologies Programme, funded by the Austrian Federal Ministry (BMK and BMDW), the Austrian Research Promotion Agency (FFG), the province of Styria (SFG) and partners from industry and academia. The COMET Programme is managed by FFG.
+In our future research, we strive to not only measure recommendation quality by accuracy, but also consider more sophisticated quality measurements as, e.g., serendipity and diversity.
+%Additionally, we aim to improve our \emph{ReuseKNN} recommender system further, by designing artificial users that exhibit maximal reusability, in addition to providing accurate recommendations. \dk{this needs more details, I think the reader does not understand what is meant with artificial user and with maximum reusability + here you could also include the point about securing high-exposed users such as Bob}
+Moreover, we aim to protect high-exposed users, i.e., reused neighbors such as \emph{Bob}, by constructing fake neighbors that are reused instead of real users.
+For example, a fake neighbor's rating data could comprise parts of \emph{Bob}'s ratings in addition to fake ratings.
+As such, we plan to preserve accuracy of recommendations, whilst increasing the reusability of the fake neighbor and thus, protect rating data of real users.
+
+%\pmu{Shortcomings of Gain: Measures the fraction of a student's rated items in the trainset, a mentor covers ($|I^{mentor}_{train} \cap I^{student}_{train}| / |I^{student}_{train}|$). We choose the mentor that has the highest coverage of a student. The problem occurs, if the mentor rated exactly the same items as the student ($I^{mentor}_{train} = I^{student}_{train}$). Then, the gain is maximal at 1, but we cannot use this mentor in the future, since the student already used all of the mentor's data in the training phase.}
+
+%\section{Acknowledgements}
+%\dk{only needed for cr-version}
+%\pmu{This work is supported by the H2020 project TRUSTS (GA:871481)} and the ``DDAI'' COMET Module within the COMET – Competence Centers for Excellent Technologies Programme, funded by the Austrian Federal Ministry (BMK and BMDW), the Austrian Research Promotion Agency (FFG), the province of Styria (SFG) and partners from industry and academia. The COMET Programme is managed by FFG.
 
 % TRUSTS acknowledgements
 %The research leading to these results has received funding from the European Union’s Horizon 2020 Research and Innovation Programme, under Grant Agreement no 871481 – Trusted Secure Data Sharing Space (TRUSTS), from the H2020-ICT-2018-20/H2020-ICT-2019-2 Call.

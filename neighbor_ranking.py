@@ -4,12 +4,11 @@ pyximport.install(setup_args={"include_dirs": np.get_include()},
                   reload_support=True)
 from algorithms.knn_neighborhood import UserKNN
 import pandas as pd
-from surprise import Dataset, Reader, accuracy, NMF
-from surprise.model_selection import KFold, train_test_split
+from surprise import Dataset, Reader, accuracy
+from surprise.model_selection import KFold
 import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from collections import defaultdict
-from scipy.stats import skew
 import os
 import psutil
 import gc
@@ -88,7 +87,7 @@ def delta_tradeoff(model1, model2, lam):
     ranks1 = tradeoff(model1, lam)
     ranks2 = tradeoff(model2, lam)
     uids = set(ranks1.keys()).intersection(ranks2.keys())
-    return [(ranks2[uid] - ranks1[uid]) for uid in uids]
+    return [np.abs(ranks2[uid] - ranks1[uid]) for uid in uids]
 
 def calculate_redistribution(base_models, models, tau=0.5, how="gini"):
     def gini(x):
@@ -147,7 +146,7 @@ else:
 dataset = Dataset.load_from_df(data_df, reader=reader)
 folds = KFold(n_splits=5)
 
-K = np.arange(1, 30, 1)
+K = np.arange(1, 30, 2)
 
 mae_1, outdegrees_1, pathlength_1, skew_1, gini_1, hoover_1 = [], [], [], [], [], []
 mae_2, outdegrees_2, pathlength_2, skew_2, gini_2, hoover_2 = [], [], [], [], [], []
@@ -252,7 +251,9 @@ for trainset, testset in folds.split(dataset):
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
-np.save("results/" + NAME + "/K.npy", K)
+    break
+
+"""np.save("results/" + NAME + "/K.npy", K)
 
 np.save("results/" + NAME + "/mae_userknn.npy", np.mean(mae_1, axis=0))
 np.save("results/" + NAME + "/mae_pop.npy", np.mean(mae_3, axis=0))
@@ -287,25 +288,11 @@ np.save("results/" + NAME + "/hoover_pop.npy", np.mean(hoover_3, axis=0))
 np.save("results/" + NAME + "/hoover_gain.npy", np.mean(hoover_5, axis=0))
 np.save("results/" + NAME + "/hoover_userknn_reuse.npy", np.mean(hoover_2, axis=0))
 np.save("results/" + NAME + "/hoover_pop_reuse.npy", np.mean(hoover_4, axis=0))
-np.save("results/" + NAME + "/hoover_gain_reuse.npy", np.mean(hoover_6, axis=0))
+np.save("results/" + NAME + "/hoover_gain_reuse.npy", np.mean(hoover_6, axis=0))"""
 
 """
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
 """
-
-
-"""plt.figure()
-plt.plot(K, sim_1[0], color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
-plt.plot(K, sim_3[0], color="C1", linestyle="dashed", label="Popularity", alpha=0.5)
-plt.plot(K, sim_5[0], color="C2", linestyle="dashed", label="Gain", alpha=0.5)
-plt.plot(K, sim_2[0], color="C0", linestyle="solid", label="UserKNN + Reuse")
-plt.plot(K, sim_4[0], color="C1", linestyle="solid", label="Popularity + Reuse")
-plt.plot(K, sim_6[0], color="C2", linestyle="solid", label="Gain + Reuse")
-plt.xlabel("Nr. of neighbors")
-plt.ylabel("Avg. mentor similarity")
-plt.legend(ncol=2)
-plt.tight_layout()
-plt.show()
 
 plt.figure()
 plt.plot(K, np.mean(mae_1, axis=0), color="C0", linestyle="dashed", label="UserKNN", alpha=0.5)
@@ -344,4 +331,4 @@ plt.ylabel("Skewness of the ratio distribution")
 plt.xlabel("Nr. of neighbors")
 plt.legend(ncol=2)
 plt.tight_layout()
-plt.show()"""
+plt.show()

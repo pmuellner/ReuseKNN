@@ -2,9 +2,7 @@ cimport numpy as np
 from numpy cimport ndarray
 import numpy as np
 import heapq
-from collections import defaultdict, Counter
-import networkx as nx
-from networkx.algorithms.shortest_paths.generic import shortest_path_length, average_shortest_path_length
+from collections import defaultdict
 
 class PredictionImpossible(Exception):
     pass
@@ -125,6 +123,22 @@ class UserKNN:
             for u_, _, _, _ in k_neighbors:
                 self.students[u_] = self.students[u_].union({u})
             k_neighbors = [(s, rank, r, u_) for _, s, rank, r in k_neighbors]
+
+
+        """concordance = dict()
+        for u1, r1 in self.trainset.ir[i]:
+            concordance_u = 0
+            for u2, r2 in self.trainset.ir[i]:
+                if r1 == r2:
+                    concordance_u += 1
+            concordance[u1] = concordance_u
+        neighbors = [(s, concordance[u_], r, u_) for u_, s, _, r in possible_mentors_data]
+        k_neighbors = heapq.nlargest(self.k, neighbors, key=lambda t: t[1])
+        self.mentors[u] = self.mentors[u].union(set(u_ for u_, _, _, _  in k_neighbors))
+        for u_, _, _, _ in k_neighbors:
+            self.students[u_] = self.students[u_].union({u})"""
+
+
 
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
