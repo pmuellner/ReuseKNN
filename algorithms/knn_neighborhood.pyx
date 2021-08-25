@@ -10,7 +10,7 @@ class PredictionImpossible(Exception):
 
 class UserKNN:
     def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, protected_neighbors=None):
+                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=None):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -29,10 +29,10 @@ class UserKNN:
         self.gain = precomputed_gain.copy() if precomputed_gain is not None else None
         self.random_neighbors = random
         self.privacy_score = None
+        self.threshold = threshold
 
         self.known_secrets = defaultdict(list)
         self.known_ratings = defaultdict(list)
-        self.protected_neighbors = protected_neighbors
 
     def fit(self, trainset):
         self.trainset = trainset
@@ -53,10 +53,8 @@ class UserKNN:
         if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
 
-        if self.protected_neighbors is None:
-            self.protected_neighbors = {u: set() for u in self.trainset.all_users()}
-
         self.ranking = dict()
+        self.n_queries = np.zeros((self.trainset.n_users))
 
         # Tradeoff
         for u in self.trainset.all_users():
@@ -114,22 +112,7 @@ class UserKNN:
                     return None
 
         possible_mentors_old = set(u_ for u_, _ in self.trainset.ir[i])
-        modified_ir = []
-        for u_, r in self.trainset.ir[i]:
-            if u_ in possible_mentors_old.intersection(self.protected_neighbors):
-                if np.random.uniform() <= 0.5:
-                    # real rating
-                    modified_ir.append((u_, r))
-                else:
-                    # fake rating
-                    min_rating, max_rating = self.trainset.rating_scale
-                    r_ =  np.random.uniform(min_rating, max_rating)
-                    modified_ir.append((u_, r_))
-            else:
-                modified_ir.append((u_, r))
-
-
-        #modified_ir = self.trainset.ir[i]
+        modified_ir = self.trainset.ir[i]
         possible_mentors = set(u_ for u_, _ in modified_ir)
 
         ranks = self.ranking[u]
@@ -182,11 +165,18 @@ class UserKNN:
         sum_sim = sum_ratings = actual_k = 0.0
         sum_rank = 0.0
         for (sim, rank, r, u_) in k_neighbors:
-            if sim > 0:
+            response = r
+            #if self.n_queries[u_] > self.threshold:
+            #    response = deniable_answer(self, u_, i)
+
+            if response is not None and sim > 0:
                 sum_sim += sim
-                sum_ratings += sim * r
+                sum_ratings += sim * response #r
                 actual_k += 1
                 sum_rank += rank
+
+            self.n_queries[u_] += 1
+
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -239,12 +229,12 @@ class UserKNN:
             uid, iid, r, r_, details = self.predict(user_id, item_id,  rating)
             predictions.append((uid, iid, r, r_, details))
             iuid = self.trainset.to_inner_uid(uid)
-            absolute_errors[iuid].append(np.abs(r - r))
+            absolute_errors[iuid].append(np.abs(r - r_))
 
-        self.mae_u = {iuid: np.mean(aes) for iuid, aes in absolute_errors.items()}
+
+        self.mae_u = {uid: np.mean(aes) for uid, aes in absolute_errors.items()}
 
         self.exposure_u = {iuid: 0 for iuid in self.trainset.all_users()}
-        pop = self.compute_popularities(self.trainset)
         for iuid, students in self.students.items():
             self.exposure_u[iuid] = len(students)
 
@@ -411,34 +401,31 @@ class UserKNN:
                 else:
                     g = 0.0
 
-                unused_items = set(knowledge[mentor]).difference(knowledge[student])
+                #unused_items = set(knowledge[mentor]).difference(knowledge[student])
                 gain[student, mentor] = g
         return gain
 
     def get_privacy_threshold(self):
-        """if self.privacy_score is None:
-            self.privacy_score = self._get_privacy_scores()
-
-        scores = np.array(list(self.privacy_score.values()))
-
+        scores = self.n_queries
         counts, edges = np.histogram(scores, bins=25)
-        kde = KernelDensity(bandwidth=100.0, kernel='gaussian')
-        kde.fit(counts.reshape(-1, 1))
-        logprob = kde.score_samples(np.linspace(0, np.max(edges), 1000).reshape(-1, 1))
-        threshold = np.linspace(0, np.max(edges), 1000)[np.argmax(np.gradient(np.gradient(np.exp(logprob))))]"""
-
-        scores = np.array(list(self.exposure_u.values()))
-        counts, edges = np.histogram(scores, bins=25)
-        kde = KernelDensity(bandwidth=30.0, kernel='gaussian')
+        kde = KernelDensity(bandwidth=50.0, kernel='gaussian')
         kde.fit(counts.reshape(-1, 1))
         logprob = kde.score_samples(np.linspace(0, np.max(edges), 1000).reshape(-1, 1))
         threshold = np.linspace(0, np.max(edges), 1000)[np.argmax(np.gradient(np.gradient(np.exp(logprob))))]
 
         return threshold
 
-    def _get_privacy_scores(self):
+    @property
+    def protected_neighbors(self):
+        protected_neighbors = set()
+        for uid, q in enumerate(self.n_queries):
+            if q > self.threshold:
+                protected_neighbors.add(uid)
+        return protected_neighbors
+
+    def  _get_privacy_scores(self):
         item_popularity = {iid: len(ratings) / self.trainset.n_users for iid, ratings in self.trainset.ir.items()}
-        privacy_score = dict()
+        privacy_score = {iuid: 0 for iuid in self.trainset.all_users()}
         privacy_score_pairwise = np.zeros((self.trainset.n_users, self.trainset.n_users))
         for alice, secrets in self.known_secrets.items():
             sensitivity = dict()
@@ -451,8 +438,3 @@ class UserKNN:
                 privacy_score_pairwise[alice, bob] = s
 
         return privacy_score
-
-    @staticmethod
-    def identify_vulnerable_users(model, threshold):
-        vulnerable_users = [uid for uid, score in model.privacy_score.items() if score > threshold]
-        return vulnerable_users
