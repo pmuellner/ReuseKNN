@@ -166,8 +166,8 @@ class UserKNN:
         sum_rank = 0.0
         for (sim, rank, r, u_) in k_neighbors:
             response = r
-            #if self.n_queries[u_] > self.threshold:
-            #    response = deniable_answer(self, u_, i)
+            if self.n_queries[u_] > self.threshold:
+                response = deniable_answer(self, u_, i)
 
             if response is not None and sim > 0:
                 sum_sim += sim

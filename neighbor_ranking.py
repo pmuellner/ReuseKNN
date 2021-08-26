@@ -60,10 +60,12 @@ def eval_ratings(predictions, measurements=[]):
 def eval_network(models, measurements=[]):
     results = defaultdict(list)
     for m_at_k in models:
-        if "outdegree" in measurements:
-            exposure = [m_at_k.exposure_u[uid] for uid in m_at_k.trainset.all_users() if uid not in m_at_k.protected_neighbors]
+        if "exposure" in measurements:
+            #exposure = [m_at_k.exposure_u[uid] for uid in m_at_k.trainset.all_users() if uid not in m_at_k.protected_neighbors]
             #exposure = [m_at_k.exposure_u[uid] for uid in m_at_k.trainset.all_users()]
-            results["outdegree"].append(np.mean(exposure))
+            exposure = [m_at_k.n_queries[uid] for uid in m_at_k.trainset.all_users() if uid not in m_at_k.protected_neighbors]
+            #exposure = [m_at_k.exposure_u[uid] for uid in m_at_k.trainset.all_users()]
+            results["exposure"].append(np.mean(exposure))
         if "pathlength" in measurements:
             pathlength = m_at_k.get_path_length()
             results["pathlength"].append(pathlength)
@@ -77,7 +79,7 @@ def eval_network(models, measurements=[]):
 
 def relative_nr_protected(baseline_models, models):
     n_protected = np.array([len(m.protected_neighbors) for m in models])
-    n_protected_baseline = np.array([len(m.protected_neighbors) for m in baseline_models])
+    n_protected_baseline = 1#np.array([len(m.protected_neighbors) for m in baseline_models])
 
     return n_protected / n_protected_baseline
 
@@ -124,9 +126,9 @@ for trainset, testset in folds.split(dataset):
 
     userknn_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(userknn_models, measurements=["outdegree"])
+    resnetwork = eval_network(userknn_models, measurements=["exposure"])
     mae_1.append(resratings["mae"])
-    outdegrees_1.append(resnetwork["outdegree"])
+    outdegrees_1.append(resnetwork["exposure"])
     vfrac_1.append(relative_nr_protected(userknn_models, userknn_models))
 
     del predictions
@@ -135,9 +137,9 @@ for trainset, testset in folds.split(dataset):
     # KNN + reuse
     userknn_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(userknn_reuse_models, measurements=["outdegree"])
+    resnetwork = eval_network(userknn_reuse_models, measurements=["exposure"])
     mae_2.append(resratings["mae"])
-    outdegrees_2.append(resnetwork["outdegree"])
+    outdegrees_2.append(resnetwork["exposure"])
     vfrac_2.append(relative_nr_protected(userknn_models, userknn_reuse_models))
 
     del userknn_reuse_models
@@ -147,9 +149,9 @@ for trainset, testset in folds.split(dataset):
     # Popularity
     popularity_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(popularity_models, measurements=["outdegree"])
+    resnetwork = eval_network(popularity_models, measurements=["exposure"])
     mae_3.append(resratings["mae"])
-    outdegrees_3.append(resnetwork["outdegree"])
+    outdegrees_3.append(resnetwork["exposure"])
     vfrac_3.append(relative_nr_protected(userknn_models, popularity_models))
 
     del popularity_models
@@ -159,9 +161,9 @@ for trainset, testset in folds.split(dataset):
     # Popularity + reuse
     popularity_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(popularity_reuse_models, measurements=["outdegree"])
+    resnetwork = eval_network(popularity_reuse_models, measurements=["exposure"])
     mae_4.append(resratings["mae"])
-    outdegrees_4.append(resnetwork["outdegree"])
+    outdegrees_4.append(resnetwork["exposure"])
     vfrac_4.append(relative_nr_protected(userknn_models, popularity_reuse_models))
 
     del popularity_reuse_models
@@ -171,9 +173,9 @@ for trainset, testset in folds.split(dataset):
     # Gain
     gain_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(gain_models, measurements=["outdegree"])
+    resnetwork = eval_network(gain_models, measurements=["exposure"])
     mae_5.append(resratings["mae"])
-    outdegrees_5.append(resnetwork["outdegree"])
+    outdegrees_5.append(resnetwork["exposure"])
     vfrac_5.append(relative_nr_protected(userknn_models, gain_models))
 
     del gain_models
@@ -183,9 +185,9 @@ for trainset, testset in folds.split(dataset):
     # Gain + reuse
     gain_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs})
     resratings = eval_ratings(predictions, measurements=["mae"])
-    resnetwork = eval_network(gain_reuse_models, measurements=["outdegree"])
+    resnetwork = eval_network(gain_reuse_models, measurements=["exposure"])
     mae_6.append(resratings["mae"])
-    outdegrees_6.append(resnetwork["outdegree"])
+    outdegrees_6.append(resnetwork["exposure"])
     vfrac_6.append(relative_nr_protected(userknn_models, gain_reuse_models))
 
     del gain_reuse_models
@@ -198,7 +200,7 @@ for trainset, testset in folds.split(dataset):
 
     break
 
-"""np.save("results/" + NAME + "/K.npy", K)
+np.save("results/" + NAME + "/K.npy", K)
 
 np.save("results/" + NAME + "/mae_userknn.npy", np.mean(mae_1, axis=0))
 np.save("results/" + NAME + "/mae_pop.npy", np.mean(mae_3, axis=0))
@@ -207,33 +209,20 @@ np.save("results/" + NAME + "/mae_userknn_reuse.npy", np.mean(mae_2, axis=0))
 np.save("results/" + NAME + "/mae_pop_reuse.npy", np.mean(mae_4, axis=0))
 np.save("results/" + NAME + "/mae_gain_reuse.npy", np.mean(mae_6, axis=0))
 
-np.save("results/" + NAME + "/deg_userknn.npy", np.mean(outdegrees_1, axis=0))
-np.save("results/" + NAME + "/deg_pop.npy", np.mean(outdegrees_3, axis=0))
-np.save("results/" + NAME + "/deg_gain.npy", np.mean(outdegrees_5, axis=0))
-np.save("results/" + NAME + "/deg_userknn_reuse.npy", np.mean(outdegrees_2, axis=0))
-np.save("results/" + NAME + "/deg_pop_reuse.npy", np.mean(outdegrees_4, axis=0))
-np.save("results/" + NAME + "/deg_gain_reuse.npy", np.mean(outdegrees_6, axis=0))
+np.save("results/" + NAME + "/exp_userknn.npy", np.mean(outdegrees_1, axis=0))
+np.save("results/" + NAME + "/exp_pop.npy", np.mean(outdegrees_3, axis=0))
+np.save("results/" + NAME + "/exp_gain.npy", np.mean(outdegrees_5, axis=0))
+np.save("results/" + NAME + "/exp_userknn_reuse.npy", np.mean(outdegrees_2, axis=0))
+np.save("results/" + NAME + "/exp_pop_reuse.npy", np.mean(outdegrees_4, axis=0))
+np.save("results/" + NAME + "/exp_gain_reuse.npy", np.mean(outdegrees_6, axis=0))
 
-np.save("results/" + NAME + "/skew_userknn.npy", np.mean(skew_1, axis=0))
-np.save("results/" + NAME + "/skew_pop.npy", np.mean(skew_3, axis=0))
-np.save("results/" + NAME + "/skew_gain.npy", np.mean(skew_5, axis=0))
-np.save("results/" + NAME + "/skew_userknn_reuse.npy", np.mean(skew_2, axis=0))
-np.save("results/" + NAME + "/skew_pop_reuse.npy", np.mean(skew_4, axis=0))
-np.save("results/" + NAME + "/skew_gain_reuse.npy", np.mean(skew_6, axis=0))
+np.save("results/" + NAME + "/vfrac_userknn.npy", np.mean(vfrac_1, axis=0))
+np.save("results/" + NAME + "/vfrac_pop.npy", np.mean(vfrac_3, axis=0))
+np.save("results/" + NAME + "/vfrac_gain.npy", np.mean(vfrac_5, axis=0))
+np.save("results/" + NAME + "/vfrac_userknn_reuse.npy", np.mean(vfrac_2, axis=0))
+np.save("results/" + NAME + "/vfrac_pop_reuse.npy", np.mean(vfrac_4, axis=0))
+np.save("results/" + NAME + "/vfrac_gain_reuse.npy", np.mean(vfrac_6, axis=0))
 
-np.save("results/" + NAME + "/gini_userknn.npy", np.mean(gini_1, axis=0))
-np.save("results/" + NAME + "/gini_pop.npy", np.mean(gini_3, axis=0))
-np.save("results/" + NAME + "/gini_gain.npy", np.mean(gini_5, axis=0))
-np.save("results/" + NAME + "/gini_userknn_reuse.npy", np.mean(gini_2, axis=0))
-np.save("results/" + NAME + "/gini_pop_reuse.npy", np.mean(gini_4, axis=0))
-np.save("results/" + NAME + "/gini_gain_reuse.npy", np.mean(gini_6, axis=0))
-
-np.save("results/" + NAME + "/hoover_userknn.npy", np.mean(hoover_1, axis=0))
-np.save("results/" + NAME + "/hoover_pop.npy", np.mean(hoover_3, axis=0))
-np.save("results/" + NAME + "/hoover_gain.npy", np.mean(hoover_5, axis=0))
-np.save("results/" + NAME + "/hoover_userknn_reuse.npy", np.mean(hoover_2, axis=0))
-np.save("results/" + NAME + "/hoover_pop_reuse.npy", np.mean(hoover_4, axis=0))
-np.save("results/" + NAME + "/hoover_gain_reuse.npy", np.mean(hoover_6, axis=0))"""
 
 """
 1. KNN, 2. KNN + Reuse, 3. Popularity, 4. Popularity + Reuse, 5. Gain, 6. Gain + Reuse
@@ -260,7 +249,7 @@ plt.plot(np.mean(outdegrees_2, axis=0), np.mean(mae_2, axis=0), color="C0", line
 plt.plot(np.mean(outdegrees_4, axis=0), np.mean(mae_4, axis=0), color="C1", linestyle="solid", label="Popularity + Reuse")
 plt.plot(np.mean(outdegrees_6, axis=0), np.mean(mae_6, axis=0), color="C2", linestyle="solid", label="Gain + Reuse")
 plt.ylabel("Mean absolute error")
-plt.xlabel(r"Nr. of Neighbors $|N_u|$")
+plt.xlabel("Avg. Exposure")
 plt.legend(ncol=2)
 plt.tight_layout()
 plt.show()
