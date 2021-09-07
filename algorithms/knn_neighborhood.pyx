@@ -10,7 +10,7 @@ class PredictionImpossible(Exception):
 
 class UserKNN:
     def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=None):
+                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=0):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -30,6 +30,7 @@ class UserKNN:
         self.random_neighbors = random
         self.privacy_score = None
         self.threshold = threshold
+        self.amt_noisy_ratings = 0
 
         self.known_secrets = defaultdict(list)
         self.known_ratings = defaultdict(list)
@@ -37,6 +38,7 @@ class UserKNN:
     def fit(self, trainset):
         self.trainset = trainset
         self.rated_items = defaultdict(list)
+        self.mu = self.trainset.global_mean
 
         if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
@@ -94,22 +96,24 @@ class UserKNN:
             raise PredictionImpossible('User and/or item is unknown.')
 
         def deniable_answer(model, u, i):
-            if np.random.uniform() >= 0.5:
+            coin_1 = np.random.uniform() >= 0.5
+            coin_2 = np.random.uniform() >= 0.5
+            for iid, r in model.trainset.ur[u]:
+                if iid == i:
+                    r_true = r
+
+            if coin_1:
                 # answer truthfully
-                for iid, r in model.trainset.ur[u]:
-                    if iid == i:
-                        return r
-                else:
-                    return None
+                return r_true
             else:
-                # answer randomly
-                if np.random.uniform() >= 0.5:
-                    # generate random rating
-                    min_rating, max_rating = model.trainset.rating_scale
-                    return np.random.uniform(min_rating, max_rating)
+                if coin_2:
+                    # answer with real rating
+                    return r_true
                 else:
-                    # return no rating
-                    return None
+                    # answer with random rating
+                    min_rating, max_rating = model.trainset.rating_scale
+                    r_random = np.random.uniform(min_rating, max_rating)
+                    return r_random
 
         possible_mentors_old = set(u_ for u_, _ in self.trainset.ir[i])
         modified_ir = self.trainset.ir[i]
@@ -167,11 +171,12 @@ class UserKNN:
         for (sim, rank, r, u_) in k_neighbors:
             response = r
             if self.n_queries[u_] > self.threshold:
+                self.amt_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
 
-            if response is not None and sim > 0:
+            if sim > 0:
                 sum_sim += sim
-                sum_ratings += sim * response #r
+                sum_ratings += sim * response
                 actual_k += 1
                 sum_rank += rank
 
@@ -239,6 +244,7 @@ class UserKNN:
             self.exposure_u[iuid] = len(students)
 
         self.privacy_score = self._get_privacy_scores()
+        self.amt_noisy_ratings /= len(testset)
 
         return predictions
 
@@ -401,7 +407,6 @@ class UserKNN:
                 else:
                     g = 0.0
 
-                #unused_items = set(knowledge[mentor]).difference(knowledge[student])
                 gain[student, mentor] = g
         return gain
 
