@@ -10,7 +10,7 @@ class PredictionImpossible(Exception):
 
 class UserKNN:
     def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=0):
+                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=0, protected=False):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -30,7 +30,8 @@ class UserKNN:
         self.random_neighbors = random
         self.privacy_score = None
         self.threshold = threshold
-        self.amt_noisy_ratings = 0
+        self.protected = protected
+        self.nr_noisy_ratings = 0
 
         self.known_secrets = defaultdict(list)
         self.known_ratings = defaultdict(list)
@@ -170,8 +171,8 @@ class UserKNN:
         sum_rank = 0.0
         for (sim, rank, r, u_) in k_neighbors:
             response = r
-            if self.n_queries[u_] > self.threshold:
-                self.amt_noisy_ratings += 1
+            if self.protected and self.n_queries[u_] > self.threshold:
+                self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
 
             if sim > 0:
@@ -228,25 +229,26 @@ class UserKNN:
         return uid, iid, r, est, details
 
     def test(self, testset):
-        predictions = []
-        absolute_errors = defaultdict(list)
+        self.predictions = []
+        self.absolute_errors = defaultdict(list)
         for user_id, item_id, rating in testset:
             uid, iid, r, r_, details = self.predict(user_id, item_id,  rating)
-            predictions.append((uid, iid, r, r_, details))
+            self.predictions.append((uid, iid, r, r_, details))
             iuid = self.trainset.to_inner_uid(uid)
-            absolute_errors[iuid].append(np.abs(r - r_))
+            self.absolute_errors[iuid].append(np.abs(r - r_))
 
+        #self.absolute_errors = absolute_errors
+        #self.mae_u = {uid: np.mean(aes) for uid, aes in absolute_errors.items()}
+        #self.predictions = predictions
 
-        self.mae_u = {uid: np.mean(aes) for uid, aes in absolute_errors.items()}
+        #self.exposure_u = {iuid: 0 for iuid in self.trainset.all_users()}
+        #for iuid, students in self.students.items():
+        #    self.exposure_u[iuid] = len(students)
 
-        self.exposure_u = {iuid: 0 for iuid in self.trainset.all_users()}
-        for iuid, students in self.students.items():
-            self.exposure_u[iuid] = len(students)
+        #self.privacy_score = self._get_privacy_scores()
+        self.nr_noisy_ratings /= len(testset)
 
-        self.privacy_score = self._get_privacy_scores()
-        self.amt_noisy_ratings /= len(testset)
-
-        return predictions
+        return self.predictions
 
     def default_prediction(self):
         return self.trainset.global_mean
