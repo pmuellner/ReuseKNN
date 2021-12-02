@@ -13,6 +13,7 @@ import os
 import psutil
 import gc
 import sys
+import pickle as pl
 from sklearn.preprocessing import MinMaxScaler
 
 def run(trainset, testset, K, configuration={}):
@@ -127,6 +128,19 @@ def eval_network(models, measurements=[]):
 
             results["nq_all"].append(np.mean(nq_all))
 
+        if "n_neighbors" in measurements:
+            q_max = np.max([len(nmentors) for nmentors in m_at_k.n_mentors_at_q.values()])
+            avg_n_mentors_at_q = [0]
+            for q in range(1, q_max + 1):
+                avg_at_q = []
+                n = 0
+                for iuid, mentors in m_at_k.n_mentors_at_q.items():
+                    if len(mentors) >= q:
+                        avg_at_q.append(mentors[q - 1])
+                        n += 1
+                avg_n_mentors_at_q.append(np.mean(avg_at_q))
+            results["nr_neighbors"].append(avg_n_mentors_at_q)
+
         if "pathlength" in measurements:
             pathlength = m_at_k.get_path_length()
             results["pathlength"].append(pathlength)
@@ -157,6 +171,7 @@ else:
     NAME = "ml-100k"
     PROTECTED = True
 
+
 if NAME == "ml-100k":
     data_df = pd.read_csv("data/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
@@ -165,7 +180,7 @@ elif NAME == "ml-1m":
     reader = Reader(rating_scale=(1, 5))
 elif NAME == "goodreads":
     data_df = pd.read_csv("data/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
-    reader = Reader(rating_scale=(0, 5))
+    reader = Reader(rating_scale=(1, 5))
 elif NAME == "jester":
     data_df = pd.read_csv("data/jester/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(-10, 10))
@@ -176,6 +191,23 @@ else:
     print("error")
     data_df = pd.DataFrame()
     reader = Reader()
+
+"""data_df = pd.read_csv("data/lfm/artist_ratings.csv", sep=";", names=["user_id", "item_id", "rating"])
+relevant_users = np.random.choice(data_df["user_id"].unique(), replace=False, size=1000)
+data_df = data_df[data_df["user_id"].isin(relevant_users)]
+reader = Reader(rating_scale=(1, 100))
+NAME = "lfm"
+PROTECTED = True"""
+
+data_df = pd.read_csv("data/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+profile_size = data_df.groupby("user_id").size()
+relevant_users = profile_size[profile_size >= 50].index.tolist()
+data_df = data_df[data_df["user_id"].isin(relevant_users)]
+reader = Reader(rating_scale=(1, 5))
+NAME = "ml-100k"
+PROTECTED = True
+
+
 if PROTECTED:
     PATH = "protected/" + NAME
 else:
@@ -184,10 +216,10 @@ else:
 print(PATH)
 
 dataset = Dataset.load_from_df(data_df, reader=reader)
+n_folds = 0
 folds = KFold(n_splits=5)
 
 K = [5, 10, 15, 20, 25, 30]
-#K = [10]
 
 mae_all_0, mae_below_0, mae_above_0, pr_below_0, pr_above_0, pr_all_0, nq_below_0, nq_above_0, nq_all_0, vulnerables_0, secure_0, nr_noisy_ratings_0 = [], [], [], [], [], [], [], [], [], [], [], []
 mae_all_1, mae_below_1, mae_above_1, pr_below_1, pr_above_1, pr_all_1, nq_below_1, nq_above_1, nq_all_1, vulnerables_1, secure_1, nr_noisy_ratings_1 = [], [], [], [], [], [], [], [], [], [], [], []
@@ -197,6 +229,8 @@ mae_all_4, mae_below_4, mae_above_4, pr_below_4, pr_above_4, pr_all_4, nq_below_
 mae_all_5, mae_below_5, mae_above_5, pr_below_5, pr_above_5, pr_all_5, nq_below_5, nq_above_5, nq_all_5, vulnerables_5, secure_5, nr_noisy_ratings_5 = [], [], [], [], [], [], [], [], [], [], [], []
 mae_all_6, mae_below_6, mae_above_6, pr_below_6, pr_above_6, pr_all_6, nq_below_6, nq_above_6, nq_all_6, vulnerables_6, secure_6, nr_noisy_ratings_6 = [], [], [], [], [], [], [], [], [], [], [], []
 mae_all_7, mae_below_7, mae_above_7, pr_below_7, pr_above_7, pr_all_7, nq_below_7, nq_above_7, nq_all_7, vulnerables_7, secure_7, nr_noisy_ratings_7 = [], [], [], [], [], [], [], [], [], [], [], []
+n_neighbors_0, n_neighbors_1, n_neighbors_2, n_neighbors_3, n_neighbors_4, n_neighbors_5, n_neighbors_6, n_neighbors_7 = [], [], [], [], [], [], [], []
+
 thresholds = []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1)
@@ -204,14 +238,18 @@ for trainset, testset in folds.split(dataset):
     gain = UserKNN.compute_gain(trainset)
 
     # Threshold
-    baseline_models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
-    threshs = [m.get_privacy_threshold() for m in baseline_models]
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
+    threshs = [m.get_privacy_threshold() for m in models]
     thresholds.append(threshs)
 
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    print("Mb: " + str(mem_info.rss / (1024 * 1024)))
+
     # KNN
-    userknn_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(userknn_models, measurements=["mae"])
-    resnetwork = eval_network(userknn_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_1.append(resratings["mae_all"])
     mae_below_1.append(resratings["mae_below"])
     mae_above_1.append(resratings["mae_above"])
@@ -221,19 +259,18 @@ for trainset, testset in folds.split(dataset):
     nq_all_1.append(resnetwork["nq_all"])
     nq_below_1.append(resnetwork["nq_below"])
     nq_above_1.append(resnetwork["nq_above"])
+    n_neighbors_1.append(resnetwork["nr_neighbors"])
 
-    n_secure, n_vulnerables = size_of_groups(userknn_models)
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_1.append(n_secure)
     vulnerables_1.append(n_vulnerables)
-    nr_noisy_ratings_1.append([m.nr_noisy_ratings for m in userknn_models])
+    nr_noisy_ratings_1.append([m.nr_noisy_ratings for m in models])
 
-    del predictions
-    gc.collect()
 
     # KNN + no protection
-    userknn_no_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
-    resratings = eval_ratings(userknn_no_models, measurements=["mae"])
-    resnetwork = eval_network(userknn_no_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_7.append(resratings["mae_all"])
     mae_below_7.append(resratings["mae_below"])
     mae_above_7.append(resratings["mae_above"])
@@ -243,20 +280,16 @@ for trainset, testset in folds.split(dataset):
     nq_all_7.append(resnetwork["nq_all"])
     nq_below_7.append(resnetwork["nq_below"])
     nq_above_7.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(userknn_no_models)
+    n_neighbors_7.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_7.append(n_secure)
     vulnerables_7.append(n_vulnerables)
-    nr_noisy_ratings_7.append([m.nr_noisy_ratings for m in userknn_no_models])
-
-    del userknn_no_models
-    del predictions
-    gc.collect()
+    nr_noisy_ratings_7.append([m.nr_noisy_ratings for m in models])
 
     # KNN + full protection
-    userknn_full_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": [0 for _ in range(len(K))], "protected": True})
-    resratings = eval_ratings(userknn_full_models, measurements=["mae"])
-    resnetwork = eval_network(userknn_full_models, measurements=["privacy_risk", "n_queries"])
-    print(resnetwork["pr_all"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": [0 for _ in range(len(K))], "protected": True})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_0.append(resratings["mae_all"])
     mae_below_0.append(resratings["mae_below"])
     mae_above_0.append(resratings["mae_above"])
@@ -266,19 +299,16 @@ for trainset, testset in folds.split(dataset):
     nq_all_0.append(resnetwork["nq_all"])
     nq_below_0.append(resnetwork["nq_below"])
     nq_above_0.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(userknn_full_models)
+    n_neighbors_0.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_0.append(n_secure)
     vulnerables_0.append(n_vulnerables)
-    nr_noisy_ratings_0.append([m.nr_noisy_ratings for m in userknn_full_models])
-
-    del userknn_full_models
-    del predictions
-    gc.collect()
+    nr_noisy_ratings_0.append([m.nr_noisy_ratings for m in models])
 
     # KNN + reuse
-    userknn_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(userknn_reuse_models, measurements=["mae"])
-    resnetwork = eval_network(userknn_reuse_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_2.append(resratings["mae_all"])
     mae_below_2.append(resratings["mae_below"])
     mae_above_2.append(resratings["mae_above"])
@@ -288,19 +318,17 @@ for trainset, testset in folds.split(dataset):
     nq_all_2.append(resnetwork["nq_all"])
     nq_below_2.append(resnetwork["nq_below"])
     nq_above_2.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(userknn_reuse_models)
+    n_neighbors_2.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_2.append(n_secure)
     vulnerables_2.append(n_vulnerables)
-    nr_noisy_ratings_2.append([m.nr_noisy_ratings for m in userknn_reuse_models])
+    nr_noisy_ratings_2.append([m.nr_noisy_ratings for m in models])
 
-    del userknn_reuse_models
-    del predictions
-    gc.collect()
 
     # Popularity
-    popularity_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(popularity_models, measurements=["mae"])
-    resnetwork = eval_network(popularity_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_3.append(resratings["mae_all"])
     mae_below_3.append(resratings["mae_below"])
     mae_above_3.append(resratings["mae_above"])
@@ -310,19 +338,17 @@ for trainset, testset in folds.split(dataset):
     nq_all_3.append(resnetwork["nq_all"])
     nq_below_3.append(resnetwork["nq_below"])
     nq_above_3.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(popularity_models)
+    n_neighbors_3.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_3.append(n_secure)
     vulnerables_3.append(n_vulnerables)
-    nr_noisy_ratings_3.append([m.nr_noisy_ratings for m in popularity_models])
+    nr_noisy_ratings_3.append([m.nr_noisy_ratings for m in models])
 
-    del popularity_models
-    del predictions
-    gc.collect()
 
     # Popularity + reuse
-    popularity_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(popularity_reuse_models, measurements=["mae"])
-    resnetwork = eval_network(popularity_reuse_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_4.append(resratings["mae_all"])
     mae_below_4.append(resratings["mae_below"])
     mae_above_4.append(resratings["mae_above"])
@@ -332,19 +358,16 @@ for trainset, testset in folds.split(dataset):
     nq_all_4.append(resnetwork["nq_all"])
     nq_below_4.append(resnetwork["nq_below"])
     nq_above_4.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(popularity_reuse_models)
+    n_neighbors_4.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_4.append(n_secure)
     vulnerables_4.append(n_vulnerables)
-    nr_noisy_ratings_4.append([m.nr_noisy_ratings for m in popularity_reuse_models])
-
-    del popularity_reuse_models
-    del predictions
-    gc.collect()
+    nr_noisy_ratings_4.append([m.nr_noisy_ratings for m in models])
 
     # Gain
-    gain_models, predictions = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(gain_models, measurements=["mae"])
-    resnetwork = eval_network(gain_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_5.append(resratings["mae_all"])
     mae_below_5.append(resratings["mae_below"])
     mae_above_5.append(resratings["mae_above"])
@@ -354,19 +377,17 @@ for trainset, testset in folds.split(dataset):
     nq_all_5.append(resnetwork["nq_all"])
     nq_below_5.append(resnetwork["nq_below"])
     nq_above_5.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(gain_models)
+    n_neighbors_5.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_5.append(n_secure)
     vulnerables_5.append(n_vulnerables)
-    nr_noisy_ratings_5.append([m.nr_noisy_ratings for m in gain_models])
+    nr_noisy_ratings_5.append([m.nr_noisy_ratings for m in models])
 
-    del gain_models
-    del predictions
-    gc.collect()
 
     # Gain + reuse
-    gain_reuse_models, predictions = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    resratings = eval_ratings(gain_reuse_models, measurements=["mae"])
-    resnetwork = eval_network(gain_reuse_models, measurements=["privacy_risk", "n_queries"])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    resratings = eval_ratings(models, measurements=["mae"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_6.append(resratings["mae_all"])
     mae_below_6.append(resratings["mae_below"])
     mae_above_6.append(resratings["mae_above"])
@@ -376,21 +397,56 @@ for trainset, testset in folds.split(dataset):
     nq_all_6.append(resnetwork["nq_all"])
     nq_below_6.append(resnetwork["nq_below"])
     nq_above_6.append(resnetwork["nq_above"])
-    n_secure, n_vulnerables = size_of_groups(gain_reuse_models)
+    n_neighbors_6.append(resnetwork["nr_neighbors"])
+    n_secure, n_vulnerables = size_of_groups(models)
     secure_6.append(n_secure)
     vulnerables_6.append(n_vulnerables)
-    nr_noisy_ratings_6.append([m.nr_noisy_ratings for m in gain_reuse_models])
+    nr_noisy_ratings_6.append([m.nr_noisy_ratings for m in models])
 
-    del gain_reuse_models
-    del predictions
-    gc.collect()
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
+    n_folds += 1
     break
 
+avg_n_neighbors0, avg_n_neighbors1, avg_n_neighbors2, avg_n_neighbors3, avg_n_neighbors4, avg_n_neighbors5, avg_n_neighbors6, avg_n_neighbors7 = [], [], [], [], [], [], [], []
+for k in range(len(K)):
+    min_queries = min([len(n_neighbors_0[f][k]) for f in range(n_folds)])
+    avg_n_neighbors0.append(np.mean([n_neighbors_0[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_1[f][k]) for f in range(n_folds)])
+    avg_n_neighbors1.append(np.mean([n_neighbors_1[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_2[f][k]) for f in range(n_folds)])
+    avg_n_neighbors2.append(np.mean([n_neighbors_2[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_3[f][k]) for f in range(n_folds)])
+    avg_n_neighbors3.append(np.mean([n_neighbors_3[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_4[f][k]) for f in range(n_folds)])
+    avg_n_neighbors4.append(np.mean([n_neighbors_4[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_5[f][k]) for f in range(n_folds)])
+    avg_n_neighbors5.append(np.mean([n_neighbors_5[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_6[f][k]) for f in range(n_folds)])
+    avg_n_neighbors6.append(np.mean([n_neighbors_6[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+    min_queries = min([len(n_neighbors_7[f][k]) for f in range(n_folds)])
+    avg_n_neighbors7.append(np.mean([n_neighbors_7[f][k][:min_queries] for f in range(n_folds)], axis=0))
+
+
+
+np.save("results/" + PATH + "/nr_neighbors_userknn_full.npy", avg_n_neighbors0)
+np.save("results/" + PATH + "/nr_neighbors_userknn.npy", avg_n_neighbors1)
+np.save("results/" + PATH + "/nr_neighbors_pop.npy", avg_n_neighbors3)
+np.save("results/" + PATH + "/nr_neighbors_gain.npy", avg_n_neighbors5)
+np.save("results/" + PATH + "/nr_neighbors_userknn_reuse.npy", avg_n_neighbors2)
+np.save("results/" + PATH + "/nr_neighbors_pop_reuse.npy", avg_n_neighbors4)
+np.save("results/" + PATH + "/nr_neighbors_gain_reuse.npy", avg_n_neighbors6)
+np.save("results/" + PATH + "/nr_neighbors_userknn_no.npy", avg_n_neighbors7)
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
