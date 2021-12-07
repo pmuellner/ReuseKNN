@@ -3,7 +3,9 @@ from numpy cimport ndarray
 import numpy as np
 import heapq
 from collections import defaultdict
+from six import iteritems
 from sklearn.neighbors import KernelDensity
+import sys
 
 class PredictionImpossible(Exception):
     pass
@@ -14,32 +16,36 @@ class UserKNN:
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
-        self.students = defaultdict(set)
+        #self.students = defaultdict(set)
         self.n_mentors_at_q = defaultdict(list)
-        self.n_students_at_q = defaultdict(list)
+        self.pr_mentors_at_q = defaultdict(list)
+        #self.n_students_at_q = defaultdict(list)
         self.reuse_neighbors = reuse
         self.tau_1 = tau_1
         self.tau_2 = tau_2
         self.tau_3 = tau_3
         self.tau_4 = tau_4
-        self.sim = precomputed_sim.copy() if precomputed_sim is not None else None
+        """self.sim = precomputed_sim.copy() if precomputed_sim is not None else None
         self.pop = precomputed_pop.copy() if precomputed_pop is not None else None
         self.act = precomputed_act.copy() if precomputed_act is not None else None
         self.rr = precomputed_rr.copy() if precomputed_rr is not None else None
-        self.gain = precomputed_gain.copy() if precomputed_gain is not None else None
+        self.gain = precomputed_gain.copy() if precomputed_gain is not None else None"""
+        self.sim = precomputed_sim if precomputed_sim is not None else None
+        self.pop = precomputed_pop if precomputed_pop is not None else None
+        self.act = precomputed_act if precomputed_act is not None else None
+        self.rr = precomputed_rr if precomputed_rr is not None else None
+        self.gain = precomputed_gain if precomputed_gain is not None else None
         self.random_neighbors = random
         self.privacy_score = None
         self.threshold = threshold
         self.protected = protected
         self.nr_noisy_ratings = 0
 
-        self.known_secrets = defaultdict(list)
-        self.known_ratings = defaultdict(list)
+        #self.known_secrets = defaultdict(list)
+        #self.known_ratings = defaultdict(list)
 
     def fit(self, trainset):
         self.trainset = trainset
-        self.rated_items = defaultdict(list)
-        self.mu = self.trainset.global_mean
 
         if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
@@ -58,6 +64,7 @@ class UserKNN:
 
         self.ranking = dict()
         self.n_queries = np.zeros((self.trainset.n_users))
+        self.privacy_risk = np.zeros((self.trainset.n_users))
 
         # Tradeoff
         for u in self.trainset.all_users():
@@ -89,7 +96,6 @@ class UserKNN:
 
             self.ranking[u] = ranking_u
 
-
         return self
 
     def estimate(self, u, i):
@@ -116,20 +122,20 @@ class UserKNN:
                     r_random = np.random.uniform(min_rating, max_rating)
                     return r_random
 
-        possible_mentors_old = set(u_ for u_, _ in self.trainset.ir[i])
+        #possible_mentors_old = set(u_ for u_, _ in self.trainset.ir[i])
         modified_ir = self.trainset.ir[i]
         possible_mentors = set(u_ for u_, _ in modified_ir)
 
         ranks = self.ranking[u]
-        possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in modified_ir]
+        possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in modified_ir if u_ != u]
         possible_mentors_data = sorted(possible_mentors_data, key=lambda t: t[2])[::-1]
 
 
         if self.random_neighbors:
             mentors = np.random.choice(list(possible_mentors), replace=False, size=min(self.k, len(possible_mentors)))
             self.mentors[u] = self.mentors[u].union(set(mentors))
-            for m in mentors:
-                self.students[m] = self.students[m].union({u})
+            #for m in mentors:
+            #    self.students[m] = self.students[m].union({u})
             neighbors = [(s, rank, r, u_) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
             k_neighbors = heapq.nlargest(self.k, neighbors, key=lambda t: t[0])
 
@@ -138,14 +144,13 @@ class UserKNN:
 
             n_new_mentors = self.k - len(already_mentors) if self.k > len(already_mentors) else 0
             new_mentors = []
-
             for u_, _, _, _ in possible_mentors_data:
                 if len(new_mentors) >= n_new_mentors:
                     break
                 elif u_ not in already_mentors:
                     new_mentors.append(u_)
                     self.mentors[u] = self.mentors[u].union({u_})
-                    self.students[u_] = self.students[u_].union({u})
+                    #self.students[u_] = self.students[u_].union({u})
             new_mentors = set(new_mentors)
 
             mentors = new_mentors.union(already_mentors)
@@ -154,26 +159,33 @@ class UserKNN:
         else:
             k_neighbors = heapq.nlargest(self.k, possible_mentors_data, key=lambda t: t[2])
             self.mentors[u] = self.mentors[u].union(set(u_ for u_, _, _, _  in k_neighbors))
-            for u_, _, _, _ in k_neighbors:
-                self.students[u_] = self.students[u_].union({u})
+            #for u_, _, _, _ in k_neighbors:
+            #    self.students[u_] = self.students[u_].union({u})
             k_neighbors = [(s, rank, r, u_) for u_, s, rank, r in k_neighbors]
 
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
-        for _, _, _, u_ in k_neighbors:
-            n_students = len(self.students[u_])
-            self.n_students_at_q[u_].append(n_students)
-            self.known_secrets[u].append((u_, i))
+        #for _, _, _, u_ in k_neighbors:
+            #n_students = len(self.students[u_])
+            #self.n_students_at_q[u_].append(n_students)
+            #self.known_secrets[u].append((u_, i))
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
         sum_rank = 0.0
+        est = 0
+        n_unprotected = 0
         for (sim, rank, r, u_) in k_neighbors:
+            self.n_queries[u_] += 1
+
             response = r
             if self.protected and self.n_queries[u_] > self.threshold:
                 self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
+            else:
+                self.privacy_risk[u_] += 1
+                n_unprotected += 1
 
             if sim > 0:
                 sum_sim += sim
@@ -181,16 +193,16 @@ class UserKNN:
                 actual_k += 1
                 sum_rank += rank
 
-            self.n_queries[u_] += 1
+        self.pr_mentors_at_q[u].append(n_unprotected / actual_k)
 
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
 
-        est = sum_ratings / sum_sim
+        est += sum_ratings / sum_sim
 
-        for _, _, r, u_ in k_neighbors:
-            self.known_ratings[u].append((u_, i, r, est))
+        #for _, _, r, u_ in k_neighbors:
+        #    self.known_ratings[u].append((u_, i, r, est))
 
         details = {'actual_k': actual_k}
         return est, details
@@ -422,11 +434,10 @@ class UserKNN:
 
         return threshold
 
-    @property
     def protected_neighbors(self):
         protected_neighbors = set()
-        for uid, q in enumerate(self.n_queries):
-            if q > self.threshold:
+        for uid, q in enumerate(self.privacy_risk):
+            if self.protected and q >= self.threshold:
                 protected_neighbors.add(uid)
         return protected_neighbors
 
