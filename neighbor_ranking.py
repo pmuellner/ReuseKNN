@@ -18,12 +18,15 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import mannwhitneyu, norm, shapiro, ttest_ind
 
 def mann_whitney_u_test(x, y, alternative="less"):
-    #u_statistic, p = mannwhitneyu(x, y, alternative=alternative)
-    u_statistic, p = mannwhitneyu(x, y, alternative="two-sided")
-    z = norm.ppf(p)
+    u, p = mannwhitneyu(x, y, alternative=alternative)
+    nx = len(x)
+    ny = len(y)
+    mu_u = (nx * ny) / 2
+    sigma_u = np.sqrt(nx * ny * (nx + ny + 1) / 12)
+    z = (u - mu_u) / sigma_u
     n = len(x) + len(y)
     r = z / np.sqrt(n)
-    return u_statistic, p, r
+    return u, p, r
 
 def dict3d_avg(listlistdict, K, n_folds):
     avg = []
@@ -97,6 +100,12 @@ def run(trainset, testset, K, configuration={}):
         predictions = model.test(testset)
         results["models"].append(model)
         results["predictions"].append(predictions)
+
+        del model.ranking
+
+        process = psutil.Process(os.getpid())
+        mem_info = process.memory_info()
+        print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
     print("Training finished after " + str(dt.now() - t0))
 
@@ -202,14 +211,16 @@ def eval_network(models, measurements=[]):
 
         if "pr_growth" in measurements:
             q_max = np.max([len(nmentors) for nmentors in m_at_k.n_mentors_at_q.values()])
-            avg_pr_of_mentors_at_q = [1]
+            avg_pr_of_mentors_at_q = [0]
             for q in range(1, q_max + 1):
-                avg_at_q = []
-                n = 0
-                for iuid, mentors in m_at_k.pr_mentors_at_q.items():
+                avg_at_q = [0]
+                """for iuid, mentors in m_at_k.n_mentors_at_q.items():
                     if len(mentors) >= q:
-                        avg_at_q.append(mentors[q - 1])
-                        n += 1
+                        avg_at_q.append(m_at_k.pr_mentors_at_q[iuid][q-1])"""
+                for iuid, pr in m_at_k.pr_mentors_at_q.items():
+                    if len(pr) >= q:
+                        avg_at_q.append(pr[q-1])
+                #print(avg_at_q)
                 avg_pr_of_mentors_at_q.append(np.mean(avg_at_q))
             results["pr_growth"].append(avg_pr_of_mentors_at_q)
 
@@ -311,6 +322,10 @@ for trainset, testset in folds.split(dataset):
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
 
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    print("Mb: " + str(mem_info.rss / (1024 * 1024)))
+
     # Threshold
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
     threshs = [m.get_privacy_threshold() for m in models]
@@ -326,7 +341,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
 
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_1.append(resratings["mae_all"])
     mae_below_1.append(resratings["mae_below"])
     mae_above_1.append(resratings["mae_above"])
@@ -340,7 +355,7 @@ for trainset, testset in folds.split(dataset):
     itemfreq_1.append(resratings["item_frequency"])
     mae_pointwise_1.append(resratings["mae_pointwise"])
     pr_pointwise_1.append(resnetwork["pr_pointwise"])
-    pr_growth_1.append(resnetwork["pr_growth"])
+
 
     n_secure, n_vulnerables = size_of_groups(models)
     secure_1.append(n_secure)
@@ -352,7 +367,7 @@ for trainset, testset in folds.split(dataset):
     # KNN + no protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_7.append(resratings["mae_all"])
     mae_below_7.append(resratings["mae_below"])
     mae_above_7.append(resratings["mae_above"])
@@ -375,7 +390,7 @@ for trainset, testset in folds.split(dataset):
     # KNN + full protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": [0 for _ in range(len(K))], "protected": True})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_0.append(resratings["mae_all"])
     mae_below_0.append(resratings["mae_below"])
     mae_above_0.append(resratings["mae_above"])
@@ -391,14 +406,13 @@ for trainset, testset in folds.split(dataset):
     secure_0.append(n_secure)
     vulnerables_0.append(n_vulnerables)
     nr_noisy_ratings_0.append([m.nr_noisy_ratings for m in models])
-    pr_growth_0.append(resnetwork["pr_growth"])
 
     del models, resratings, resnetwork
 
     # KNN + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_2.append(resratings["mae_all"])
     mae_below_2.append(resratings["mae_below"])
     mae_above_2.append(resratings["mae_above"])
@@ -416,7 +430,7 @@ for trainset, testset in folds.split(dataset):
     nr_noisy_ratings_2.append([m.nr_noisy_ratings for m in models])
     mae_pointwise_2.append(resratings["mae_pointwise"])
     pr_pointwise_2.append(resnetwork["pr_pointwise"])
-    pr_growth_2.append(resnetwork["pr_growth"])
+
 
     del models, resratings, resnetwork
 
@@ -424,7 +438,7 @@ for trainset, testset in folds.split(dataset):
     # Popularity
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_3.append(resratings["mae_all"])
     mae_below_3.append(resratings["mae_below"])
     mae_above_3.append(resratings["mae_above"])
@@ -442,7 +456,6 @@ for trainset, testset in folds.split(dataset):
     nr_noisy_ratings_3.append([m.nr_noisy_ratings for m in models])
     mae_pointwise_3.append(resratings["mae_pointwise"])
     pr_pointwise_3.append(resnetwork["pr_pointwise"])
-    pr_growth_3.append(resnetwork["pr_growth"])
 
     del models, resratings, resnetwork
 
@@ -450,7 +463,7 @@ for trainset, testset in folds.split(dataset):
     # Popularity + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_4.append(resratings["mae_all"])
     mae_below_4.append(resratings["mae_below"])
     mae_above_4.append(resratings["mae_above"])
@@ -468,14 +481,13 @@ for trainset, testset in folds.split(dataset):
     nr_noisy_ratings_4.append([m.nr_noisy_ratings for m in models])
     mae_pointwise_4.append(resratings["mae_pointwise"])
     pr_pointwise_4.append(resnetwork["pr_pointwise"])
-    pr_growth_4.append(resnetwork["pr_growth"])
 
     del models, resratings, resnetwork
 
     # Gain
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_5.append(resratings["mae_all"])
     mae_below_5.append(resratings["mae_below"])
     mae_above_5.append(resratings["mae_above"])
@@ -493,7 +505,6 @@ for trainset, testset in folds.split(dataset):
     nr_noisy_ratings_5.append([m.nr_noisy_ratings for m in models])
     mae_pointwise_5.append(resratings["mae_pointwise"])
     pr_pointwise_5.append(resnetwork["pr_pointwise"])
-    pr_growth_5.append(resnetwork["pr_growth"])
 
     del models, resratings, resnetwork
 
@@ -501,7 +512,7 @@ for trainset, testset in folds.split(dataset):
     # Gain + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "pr_growth"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
     mae_all_6.append(resratings["mae_all"])
     mae_below_6.append(resratings["mae_below"])
     mae_above_6.append(resratings["mae_above"])
@@ -519,28 +530,15 @@ for trainset, testset in folds.split(dataset):
     nr_noisy_ratings_6.append([m.nr_noisy_ratings for m in models])
     mae_pointwise_6.append(resratings["mae_pointwise"])
     pr_pointwise_6.append(resnetwork["pr_pointwise"])
-    pr_growth_6.append(resnetwork["pr_growth"])
 
     del models, resratings, resnetwork
+    del sim, gain, pop
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
-    print("=== [Accuracy] H0: UserKNN == ReuseKNN ===")
-    """for k_idx, _ in enumerate(K):
-        u, p, r = mann_whitney_u_test(mae_pointwise_2[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
-        print("[two-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
-        u, p, r = mann_whitney_u_test(mae_pointwise_3[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
-        print("[two-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
-        u, p, r = mann_whitney_u_test(mae_pointwise_4[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
-        print("[two-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
-        u, p, r = mann_whitney_u_test(mae_pointwise_5[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
-        print("[two-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
-        u, p, r = mann_whitney_u_test(mae_pointwise_6[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
-        print("[two-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
-        print()"""
-
+    print("=== [Accuracy] H0: UserKNN vs. ReuseKNN ===")
     for k_idx, _ in enumerate(K):
         u, p, r = mann_whitney_u_test(mae_pointwise_2[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="less")
         print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
@@ -553,8 +551,20 @@ for trainset, testset in folds.split(dataset):
         u, p, r = mann_whitney_u_test(mae_pointwise_6[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="less")
         print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
         print()
+    for k_idx, _ in enumerate(K):
+        u, p, r = mann_whitney_u_test(mae_pointwise_2[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(mae_pointwise_3[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(mae_pointwise_4[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(mae_pointwise_5[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(mae_pointwise_6[n_folds][k_idx], mae_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        print()
 
-    print("=== [Privacy] H0: UserKNN < ReuseKNN ===")
+    print("=== [Privacy] H0: UserKNN vs. ReuseKNN ===")
     for k_idx, _ in enumerate(K):
         u, p, r = mann_whitney_u_test(pr_pointwise_2[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="less")
         print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
@@ -567,11 +577,23 @@ for trainset, testset in folds.split(dataset):
         u, p, r = mann_whitney_u_test(pr_pointwise_6[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="less")
         print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
         print()
+    for k_idx, _ in enumerate(K):
+        u, p, r = mann_whitney_u_test(pr_pointwise_2[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(pr_pointwise_3[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(pr_pointwise_4[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(pr_pointwise_5[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        u, p, r = mann_whitney_u_test(pr_pointwise_6[n_folds][k_idx], pr_pointwise_1[n_folds][k_idx], alternative="two-sided")
+        print("[two-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[k_idx], u, p, r))
+        print()
 
     n_folds += 1
     break
 
-avg_pr0, avg_pr1, avg_pr2, avg_pr3, avg_pr4, avg_pr5, avg_pr6, avg_pr7 = [], [], [], [], [], [], [], []
+"""avg_pr0, avg_pr1, avg_pr2, avg_pr3, avg_pr4, avg_pr5, avg_pr6, avg_pr7 = [], [], [], [], [], [], [], []
 for k in range(len(K)):
     min_queries = min([len(pr_growth_0[f][k]) for f in range(n_folds)])
     avg_pr0.append(np.mean([pr_growth_0[f][k][:min_queries] for f in range(n_folds)], axis=0))
@@ -595,7 +617,7 @@ for k in range(len(K)):
     avg_pr6.append(np.mean([pr_growth_6[f][k][:min_queries] for f in range(n_folds)], axis=0))
 
     min_queries = min([len(pr_growth_7[f][k]) for f in range(n_folds)])
-    avg_pr7.append(np.mean([pr_growth_7[f][k][:min_queries] for f in range(n_folds)], axis=0))
+    avg_pr7.append(np.mean([pr_growth_7[f][k][:min_queries] for f in range(n_folds)], axis=0))"""
 
 avg_n_neighbors0, avg_n_neighbors1, avg_n_neighbors2, avg_n_neighbors3, avg_n_neighbors4, avg_n_neighbors5, avg_n_neighbors6, avg_n_neighbors7 = [], [], [], [], [], [], [], []
 for k in range(len(K)):
@@ -641,14 +663,14 @@ f = open("results/" + PATH + "/item_frequency_userknn_no.pkl", "wb")
 pl.dump(dict3d_avg(itemfreq_7, n_folds=n_folds, K=K), f)
 f.close()
 
-np.save("results/" + PATH + "/prgrowth_userknn_full.npy", avg_pr0)
+"""np.save("results/" + PATH + "/prgrowth_userknn_full.npy", avg_pr0)
 np.save("results/" + PATH + "/prgrowth_userknn.npy", avg_pr1)
 np.save("results/" + PATH + "/prgrowth_pop.npy", avg_pr3)
 np.save("results/" + PATH + "/prgrowth_gain.npy", avg_pr5)
 np.save("results/" + PATH + "/prgrowth_userknn_reuse.npy", avg_pr2)
 np.save("results/" + PATH + "/prgrowth_pop_reuse.npy", avg_pr4)
 np.save("results/" + PATH + "/prgrowth_gain_reuse.npy", avg_pr6)
-np.save("results/" + PATH + "/prgrowth_userknn_no.npy", avg_pr7)
+np.save("results/" + PATH + "/prgrowth_userknn_no.npy", avg_pr7)"""
 
 np.save("results/" + PATH + "/nr_neighbors_userknn_full.npy", avg_n_neighbors0)
 np.save("results/" + PATH + "/nr_neighbors_userknn.npy", avg_n_neighbors1)

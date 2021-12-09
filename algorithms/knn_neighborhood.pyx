@@ -18,7 +18,7 @@ class UserKNN:
         self.mentors = defaultdict(set)
         #self.students = defaultdict(set)
         self.n_mentors_at_q = defaultdict(list)
-        self.pr_mentors_at_q = defaultdict(list)
+        #self.pr_mentors_at_q = defaultdict(list)
         #self.n_students_at_q = defaultdict(list)
         self.reuse_neighbors = reuse
         self.tau_1 = tau_1
@@ -175,7 +175,7 @@ class UserKNN:
         sum_sim = sum_ratings = actual_k = 0.0
         sum_rank = 0.0
         est = 0
-        n_unprotected = 0
+        pr_unprotected = []
         for (sim, rank, r, u_) in k_neighbors:
             self.n_queries[u_] += 1
 
@@ -184,8 +184,8 @@ class UserKNN:
                 self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
             else:
+                pr_unprotected.append(self.privacy_risk[u_])
                 self.privacy_risk[u_] += 1
-                n_unprotected += 1
 
             if sim > 0:
                 sum_sim += sim
@@ -193,8 +193,10 @@ class UserKNN:
                 actual_k += 1
                 sum_rank += rank
 
-        self.pr_mentors_at_q[u].append(n_unprotected / actual_k)
-
+        """if len(pr_unprotected) > 0:
+            self.pr_mentors_at_q[u].append(np.mean(pr_unprotected))
+        else:
+            self.pr_mentors_at_q[u].append(0)"""
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -246,7 +248,13 @@ class UserKNN:
         for user_id, item_id, rating in testset:
             uid, iid, r, r_, details = self.predict(user_id, item_id,  rating)
             self.predictions.append((uid, iid, r, r_, details))
-            iuid = self.trainset.to_inner_uid(uid)
+            #iuid = self.trainset.to_inner_uid(uid)
+            #self.absolute_errors[iuid].append(np.abs(r - r_))
+
+            try:
+                iuid = self.trainset.to_inner_uid(uid)
+            except ValueError:
+                iuid = 'UKN__' + str(uid)
             self.absolute_errors[iuid].append(np.abs(r - r_))
 
         #self.absolute_errors = absolute_errors
