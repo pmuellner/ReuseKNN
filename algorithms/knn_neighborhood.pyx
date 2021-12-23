@@ -37,7 +37,7 @@ class UserKNN:
         self.gain = precomputed_gain if precomputed_gain is not None else None
         self.random_neighbors = random
         self.privacy_score = None
-        self.threshold = threshold
+        self.threshold = int(threshold)
         self.protected = protected
         self.nr_noisy_ratings = 0
 
@@ -46,6 +46,7 @@ class UserKNN:
 
     def fit(self, trainset):
         self.trainset = trainset
+        self.avg_neighbor_sim = defaultdict(list)
 
         if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
@@ -62,13 +63,52 @@ class UserKNN:
         if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
 
-        self.ranking = dict()
+        #self.ranking = dict()
         self.n_queries = np.zeros((self.trainset.n_users))
         self.privacy_risk = np.zeros((self.trainset.n_users))
 
         # Tradeoff
+        self.ranking = np.zeros((self.trainset.n_users, self.trainset.n_users))
         for u in self.trainset.all_users():
             if self.sim is not None:
+                simrank = np.zeros(self.trainset.n_users)
+                for k, v in enumerate(np.argsort(self.sim[u, :])):
+                    simrank[v] = k
+            if self.pop is not None:
+                poprank = np.zeros(self.trainset.n_users)
+                for k, v in enumerate(np.argsort(self.pop)):
+                    poprank[v] = k
+            if self.act is not None:
+                actrank = np.zeros(self.trainset.n_users)
+                for k, v in enumerate(np.argsort(self.act)):
+                    actrank[v] = k
+            if self.rr is not None:
+                rrrank = np.zeros(self.trainset.n_users)
+                for k, v in enumerate(np.argsort(self.rr)):
+                    rrrank[v] = k
+            if self.gain is not None:
+                gainrank = np.zeros(self.trainset.n_users)
+                for k, v in enumerate(np.argsort(self.gain[u, :])):
+                    gainrank[v] = k
+
+            ranking_u = np.zeros(self.trainset.n_users)
+            for u_ in self.trainset.all_users():
+                if u_ != u:
+                    ranking_u[u_] = 0
+                    if self.act is not None:
+                        ranking_u[u_] += self.tau_1 * actrank[u_]
+                    if self.pop is not None:
+                        ranking_u[u_] += self.tau_2 * poprank[u_]
+                    if self.rr is not None:
+                        ranking_u[u_] += self.tau_3 * rrrank[u_]
+                    if self.gain is not None:
+                        ranking_u[u_] += self.tau_4 * gainrank[u_]
+                    if self.sim is not None:
+                        ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
+
+            self.ranking[u] = ranking_u
+
+            """if self.sim is not None:
                 simrank = {v: k for k, v in dict(enumerate(np.argsort(self.sim[u, :]))).items()}
             if self.pop is not None:
                 poprank = {v: k for k, v in dict(enumerate(np.argsort(self.pop))).items()}
@@ -78,6 +118,7 @@ class UserKNN:
                 rrrank = {v: k for k, v in dict(enumerate(np.argsort(self.rr))).items()}
             if self.gain is not None:
                 gainrank = {v: k for k, v in dict(enumerate(np.argsort(self.gain[u, :]))).items()}
+
 
             ranking_u = dict()
             for u_ in self.trainset.all_users():
@@ -94,7 +135,7 @@ class UserKNN:
                     if self.sim is not None:
                         ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
 
-            self.ranking[u] = ranking_u
+            self.ranking[u] = ranking_u"""
 
         return self
 
@@ -197,6 +238,8 @@ class UserKNN:
             self.pr_mentors_at_q[u].append(np.mean(pr_unprotected))
         else:
             self.pr_mentors_at_q[u].append(0)"""
+
+
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -386,7 +429,8 @@ class UserKNN:
             acc_rp = 0.0
             for i, _ in ratings:
                 acc_rp += item_popularities[i]
-            reuse_potential[u] = acc_rp / (trainset.n_ratings / trainset.n_users)
+            #reuse_potential[u] = acc_rp / (trainset.n_ratings / trainset.n_users)
+            reuse_potential[u] = acc_rp
         return reuse_potential
 
     @staticmethod
