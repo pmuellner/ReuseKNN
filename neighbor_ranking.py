@@ -194,6 +194,8 @@ def eval_network(models, measurements=[]):
                 results["nq_above"].append(0)
 
             results["nq_all"].append(np.mean(nq_all))
+            results["nq_pointwise_v"].append(nq_above)
+            results["nq_pointwise_s"].append(nq_below)
 
         if "n_neighbors" in measurements:
             q_max = np.max([len(nmentors) for nmentors in m_at_k.n_mentors_at_q.values()])
@@ -313,6 +315,9 @@ itemfreq_0, itemfreq_1, itemfreq_2, itemfreq_3, itemfreq_4, itemfreq_5, itemfreq
 mae_pointwise_0, mae_pointwise_1, mae_pointwise_2, mae_pointwise_3, mae_pointwise_4, mae_pointwise_5, mae_pointwise_6, mae_pointwise_7 = [], [], [], [], [], [], [], []
 pr_pointwise_0, pr_pointwise_1, pr_pointwise_2, pr_pointwise_3, pr_pointwise_4, pr_pointwise_5, pr_pointwise_6, pr_pointwise_7 = [], [], [], [], [], [], [], []
 nn_pointwise_0, nn_pointwise_1, nn_pointwise_2, nn_pointwise_3, nn_pointwise_4, nn_pointwise_5, nn_pointwise_6, nn_pointwise_7 = [], [], [], [], [], [], [], []
+nq_pw_v_0, nq_pw_v_1, nq_pw_v_2, nq_pw_v_3, nq_pw_v_4, nq_pw_v_5, nq_pw_v_6, nq_pw_v_7 = [], [], [], [], [], [], [], []
+nq_pw_s_0, nq_pw_s_1, nq_pw_s_2, nq_pw_s_3, nq_pw_s_4, nq_pw_s_5, nq_pw_s_6, nq_pw_s_7 = [], [], [], [], [], [], [], []
+
 thresholds = []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1)
@@ -352,6 +357,8 @@ for trainset, testset in folds.split(dataset):
     itemfreq_1.append(resratings["item_frequency"])
     mae_pointwise_1.append(resratings["mae_pointwise"])
     pr_pointwise_1.append(resnetwork["pr_pointwise"])
+    nq_pw_v_1.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_1.append(resnetwork["nq_pointwise_s"])
     nn_pointwise_1.append(resnetwork["nn_pointwise"])
     n_secure, n_vulnerables = size_of_groups(models)
     secure_1.append(n_secure)
@@ -385,6 +392,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_7.append(resratings["mae_pointwise"])
     pr_pointwise_7.append(resnetwork["pr_pointwise"])
     nn_pointwise_7.append(resnetwork["nn_pointwise"])
+    nq_pw_v_7.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_7.append(resnetwork["nq_pointwise_s"])
 
     del models, resratings, resnetwork
 
@@ -410,6 +419,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_0.append(resratings["mae_pointwise"])
     pr_pointwise_0.append(resnetwork["pr_pointwise"])
     nn_pointwise_0.append(resnetwork["nn_pointwise"])
+    nq_pw_v_0.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_0.append(resnetwork["nq_pointwise_s"])
 
     del models, resratings, resnetwork
 
@@ -437,6 +448,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_2.append(resratings["mae_pointwise"])
     pr_pointwise_2.append(resnetwork["pr_pointwise"])
     nn_pointwise_2.append(resnetwork["nn_pointwise"])
+    nq_pw_v_2.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_2.append(resnetwork["nq_pointwise_s"])
 
 
     del models, resratings, resnetwork
@@ -463,6 +476,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_3.append(resratings["mae_pointwise"])
     pr_pointwise_3.append(resnetwork["pr_pointwise"])
     nn_pointwise_3.append(resnetwork["nn_pointwise"])
+    nq_pw_v_3.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_3.append(resnetwork["nq_pointwise_s"])
 
 
     del models, resratings, resnetwork
@@ -490,6 +505,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_4.append(resratings["mae_pointwise"])
     pr_pointwise_4.append(resnetwork["pr_pointwise"])
     nn_pointwise_4.append(resnetwork["nn_pointwise"])
+    nq_pw_v_4.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_4.append(resnetwork["nq_pointwise_s"])
 
 
     del models, resratings, resnetwork
@@ -516,6 +533,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_5.append(resratings["mae_pointwise"])
     pr_pointwise_5.append(resnetwork["pr_pointwise"])
     nn_pointwise_5.append(resnetwork["nn_pointwise"])
+    nq_pw_v_5.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_5.append(resnetwork["nq_pointwise_s"])
 
 
     del models, resratings, resnetwork
@@ -543,6 +562,8 @@ for trainset, testset in folds.split(dataset):
     mae_pointwise_6.append(resratings["mae_pointwise"])
     pr_pointwise_6.append(resnetwork["pr_pointwise"])
     nn_pointwise_6.append(resnetwork["nn_pointwise"])
+    nq_pw_v_6.append(resnetwork["nq_pointwise_v"])
+    nq_pw_s_6.append(resnetwork["nq_pointwise_s"])
 
 
     del models, resratings, resnetwork
@@ -553,9 +574,9 @@ for trainset, testset in folds.split(dataset):
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
-    original_stdout = sys.stdout
-    f = open("results/" + PATH + "/significance_tests.txt", 'a')
-    sys.stdout = f  # Change the standard output to the file we created.
+    #original_stdout = sys.stdout
+    #f = open("results/" + PATH + "/significance_tests.txt", 'a')
+    #sys.stdout = f  # Change the standard output to the file we created.
 
     print("=== [Accuracy] H0: DP vs. ReuseKNN ===")
     for k_idx, _ in enumerate(K):
@@ -735,6 +756,118 @@ for trainset, testset in folds.split(dataset):
             print("[one-tailed MWU] Gain+Reuse k=%d: No Difference" % K[k_idx])
         print()
 
+    print("=== [Privacy Risk - Secures] H0: Popularity > UserKNN")
+    if not np.array_equal(nq_pw_s_2[n_folds][1], nq_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_s_2[n_folds][1], nq_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_s_3[n_folds][1], nq_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_s_3[n_folds][1], nq_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_s_4[n_folds][1], nq_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_s_4[n_folds][1], nq_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_s_5[n_folds][1], nq_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_s_5[n_folds][1], nq_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_s_6[n_folds][1], nq_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_s_6[n_folds][1], nq_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain+Reuse k=%d: No Difference" % K[1])
+    print()
+
+    print("=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN")
+    if not np.array_equal(nq_pw_v_2[n_folds][1], nq_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_v_2[n_folds][1], nq_pw_v_1[n_folds][1], alternative="greater")
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_v_3[n_folds][1], nq_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_v_3[n_folds][1], nq_pw_v_1[n_folds][1], alternative="greater")
+        print("[one-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_v_4[n_folds][1], nq_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_v_4[n_folds][1], nq_pw_v_1[n_folds][1], alternative="greater")
+        print("[one-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_v_5[n_folds][1], nq_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_v_5[n_folds][1], nq_pw_v_1[n_folds][1], alternative="greater")
+        print("[one-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain k=%d: No Difference" % K[1])
+    if not np.array_equal(nq_pw_v_6[n_folds][1], nq_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(nq_pw_v_6[n_folds][1], nq_pw_v_1[n_folds][1], alternative="greater")
+        print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain+Reuse k=%d: No Difference" % K[1])
+
+    exit()
+
+    """if not np.array_equal(pr_pw_s_2[n_folds][1], pr_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_s_2[n_folds][1], pr_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_s_3[n_folds][1], pr_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_s_3[n_folds][1], pr_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_s_4[n_folds][1], pr_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_s_4[n_folds][1], pr_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_s_5[n_folds][1], pr_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_s_5[n_folds][1], pr_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_s_6[n_folds][1], pr_pw_s_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_s_6[n_folds][1], pr_pw_s_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain+Reuse k=%d: No Difference" % K[1])
+
+    print("=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN")
+    if not np.array_equal(pr_pw_v_2[n_folds][1], pr_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_v_2[n_folds][1], pr_pw_v_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] UserKNN+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_v_3[n_folds][1], pr_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_v_3[n_folds][1], pr_pw_v_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_v_4[n_folds][1], pr_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_v_4[n_folds][1], pr_pw_v_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Popularity+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Popularity+Reuse k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_v_5[n_folds][1], pr_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_v_5[n_folds][1], pr_pw_v_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain k=%d: No Difference" % K[1])
+    if not np.array_equal(pr_pw_v_6[n_folds][1], pr_pw_v_1[n_folds][1]):
+        u, p, r = mann_whitney_u_test(pr_pw_v_6[n_folds][1], pr_pw_v_1[n_folds][1], alternative="less")
+        print("[one-tailed MWU] Gain+Reuse k=%d: %f (U), %f (p), %f (r)" % (K[1], u, p, r))
+    else:
+        print("[one-tailed MWU] Gain+Reuse k=%d: No Difference" % K[1])
+    """
+
+
     print("=== [Neighborhood Growth] H0: UserKNN vs. ReuseKNN ===")
     for k_idx, _ in enumerate(K):
         n_queries = len(nn_pointwise_1[n_folds][k_idx])
@@ -798,8 +931,8 @@ for trainset, testset in folds.split(dataset):
                 print("[two-tailed MWU] Gain+Reuse k=%d: No Difference" % K[k_idx])
         print()
         
-    sys.stdout = original_stdout  # Reset the standard output to its original value
-    f.close()
+    #sys.stdout = original_stdout  # Reset the standard output to its original value
+    #f.close()
 
     n_folds += 1
 
