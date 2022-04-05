@@ -177,6 +177,15 @@ def eval_network(models, measurements=[]):
             results["pr_all"].append(np.mean(pr_all))
             results["pr_pointwise"].append(pr_all)
 
+        if "coverage":
+            coverage = []
+            for target_user, neighbors in m_at_k.mentors.items():
+                coverage_target_user = set()
+                for neighbor in neighbors:
+                    coverage_target_user = coverage_target_user.union([iid for iid, r in m_at_k.trainset.ur[neighbor]])
+                coverage.append(len(coverage_target_user))
+            results["coverage"].append(np.mean(coverage))
+
         if "n_queries" in measurements:
             nq_below, nq_above, nq_all = [], [], []
             for uid in m_at_k.trainset.all_users():
@@ -347,6 +356,7 @@ pr_pointwise_0, pr_pointwise_1, pr_pointwise_2, pr_pointwise_3, pr_pointwise_4, 
 nn_pointwise_0, nn_pointwise_1, nn_pointwise_2, nn_pointwise_3, nn_pointwise_4, nn_pointwise_5, nn_pointwise_6, nn_pointwise_7 = [], [], [], [], [], [], [], []
 nq_pw_v_0, nq_pw_v_1, nq_pw_v_2, nq_pw_v_3, nq_pw_v_4, nq_pw_v_5, nq_pw_v_6, nq_pw_v_7 = [], [], [], [], [], [], [], []
 nq_pw_s_0, nq_pw_s_1, nq_pw_s_2, nq_pw_s_3, nq_pw_s_4, nq_pw_s_5, nq_pw_s_6, nq_pw_s_7 = [], [], [], [], [], [], [], []
+coverage_0, coverage_1, coverage_2, coverage_3, coverage_4, coverage_5, coverage_6, coverage_7 = [], [], [], [], [], [], [], []
 
 mae_all_8, mae_all_9, mae_all_10, mae_all_11 = [], [], [], []
 mae_low_1, mae_low_3, mae_low_5, mae_low_8, mae_low_9, mae_low_10, mae_low_11 = [], [], [], [], [], [], []
@@ -378,7 +388,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
 
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_1.append(resratings["mae_all"])
     mae_below_1.append(resratings["mae_below"])
     mae_above_1.append(resratings["mae_above"])
@@ -403,6 +413,7 @@ for trainset, testset in folds.split(dataset):
     mae_low_1.append(r["low"])
     mae_med_1.append(r["med"])
     mae_high_1.append(r["high"])
+    coverage_1.append(resnetwork["coverage"])
 
     print(mae_all_1)
     print(mae_high_1)
@@ -414,7 +425,7 @@ for trainset, testset in folds.split(dataset):
     # KNN + no protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_7.append(resratings["mae_all"])
     mae_below_7.append(resratings["mae_below"])
     mae_above_7.append(resratings["mae_above"])
@@ -436,13 +447,14 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_7.append(resnetwork["nn_pointwise"])
     nq_pw_v_7.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_7.append(resnetwork["nq_pointwise_s"])
+    coverage_7.append(resnetwork["coverage"])
 
     del models, resratings, resnetwork
 
     # KNN + full protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "thresholds": [0 for _ in range(len(K))], "protected": True})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_0.append(resratings["mae_all"])
     mae_below_0.append(resratings["mae_below"])
     mae_above_0.append(resratings["mae_above"])
@@ -463,6 +475,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_0.append(resnetwork["nn_pointwise"])
     nq_pw_v_0.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_0.append(resnetwork["nq_pointwise_s"])
+    coverage_0.append(resnetwork["coverage"])
 
     del models, resratings, resnetwork
 
@@ -470,7 +483,7 @@ for trainset, testset in folds.split(dataset):
     # KNN + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_2.append(resratings["mae_all"])
     mae_below_2.append(resratings["mae_below"])
     mae_above_2.append(resratings["mae_above"])
@@ -492,6 +505,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_2.append(resnetwork["nn_pointwise"])
     nq_pw_v_2.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_2.append(resnetwork["nq_pointwise_s"])
+    coverage_2.append(resnetwork["coverage"])
 
 
     del models, resratings, resnetwork
@@ -499,7 +513,7 @@ for trainset, testset in folds.split(dataset):
     # Popularity
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_3.append(resratings["mae_all"])
     mae_below_3.append(resratings["mae_below"])
     mae_above_3.append(resratings["mae_above"])
@@ -520,6 +534,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_3.append(resnetwork["nn_pointwise"])
     nq_pw_v_3.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_3.append(resnetwork["nq_pointwise_s"])
+    coverage_3.append(resnetwork["coverage"])
 
     r = mae_per_group(models)
     mae_low_3.append(r["low"])
@@ -533,7 +548,7 @@ for trainset, testset in folds.split(dataset):
     # Popularity + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_4.append(resratings["mae_all"])
     mae_below_4.append(resratings["mae_below"])
     mae_above_4.append(resratings["mae_above"])
@@ -554,6 +569,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_4.append(resnetwork["nn_pointwise"])
     nq_pw_v_4.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_4.append(resnetwork["nq_pointwise_s"])
+    coverage_4.append(resnetwork["coverage"])
 
 
     del models, resratings, resnetwork
@@ -561,7 +577,7 @@ for trainset, testset in folds.split(dataset):
     # Gain
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_5.append(resratings["mae_all"])
     mae_below_5.append(resratings["mae_below"])
     mae_above_5.append(resratings["mae_above"])
@@ -582,6 +598,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_5.append(resnetwork["nn_pointwise"])
     nq_pw_v_5.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_5.append(resnetwork["nq_pointwise_s"])
+    coverage_5.append(resnetwork["coverage"])
 
     r = mae_per_group(models)
     mae_low_5.append(r["low"])
@@ -595,7 +612,7 @@ for trainset, testset in folds.split(dataset):
     # Gain + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     resratings = eval_ratings(models, measurements=["mae", "item_frequency"])
-    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors"])
+    resnetwork = eval_network(models, measurements=["privacy_risk", "n_queries", "n_neighbors", "coverage"])
     mae_all_6.append(resratings["mae_all"])
     mae_below_6.append(resratings["mae_below"])
     mae_above_6.append(resratings["mae_above"])
@@ -616,6 +633,7 @@ for trainset, testset in folds.split(dataset):
     nn_pointwise_6.append(resnetwork["nn_pointwise"])
     nq_pw_v_6.append(resnetwork["nq_pointwise_v"])
     nq_pw_s_6.append(resnetwork["nq_pointwise_s"])
+    coverage_6.append(resnetwork["coverage"])
 
     del models, resratings, resnetwork
     del sim, gain, pop
@@ -1059,6 +1077,15 @@ np.save("results/" + PATH + "/nr_neighbors_userknn_no.npy", avg_n_neighbors7)"""
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
+
+np.save("results/" + PATH + "/coverage_userknn_full.npy", np.mean(coverage_0, axis=0))
+np.save("results/" + PATH + "/coverage_userknn.npy", np.mean(coverage_1, axis=0))
+np.save("results/" + PATH + "/coverage_pop.npy", np.mean(coverage_3, axis=0))
+np.save("results/" + PATH + "/coverage_gain.npy", np.mean(coverage_5, axis=0))
+np.save("results/" + PATH + "/coverage_userknn_reuse.npy", np.mean(coverage_2, axis=0))
+np.save("results/" + PATH + "/coverage_pop_reuse.npy", np.mean(coverage_4, axis=0))
+np.save("results/" + PATH + "/coverage_gain_reuse.npy", np.mean(coverage_6, axis=0))
+np.save("results/" + PATH + "/coverage_userknn_no.npy", np.mean(coverage_7, axis=0))
 
 np.save("results/" + PATH + "/mae_all_userknn_full.npy", np.mean(mae_all_0, axis=0))
 np.save("results/" + PATH + "/mae_all_userknn.npy", np.mean(mae_all_1, axis=0))
