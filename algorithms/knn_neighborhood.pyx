@@ -6,12 +6,14 @@ from collections import defaultdict
 from six import iteritems
 from sklearn.neighbors import KernelDensity
 import sys
+from scipy.special import softmax
+from scipy.stats import rankdata
 
 class PredictionImpossible(Exception):
     pass
 
 class UserKNN:
-    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, precomputed_sim=None,
+    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, tau_5=0, tau_6=0, precomputed_sim=None,
                  precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=0, protected=False):
         self.k = k
         self.min_k = min_k
@@ -25,6 +27,8 @@ class UserKNN:
         self.tau_2 = tau_2
         self.tau_3 = tau_3
         self.tau_4 = tau_4
+        self.tau_5 = tau_5
+        self.tau_6 = tau_6
         """self.sim = precomputed_sim.copy() if precomputed_sim is not None else None
         self.pop = precomputed_pop.copy() if precomputed_pop is not None else None
         self.act = precomputed_act.copy() if precomputed_act is not None else None
@@ -63,6 +67,10 @@ class UserKNN:
         if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
 
+        self.rr_expect = self.compute_rr_expect(self.trainset)
+        self.rr_pop = self.compute_rr_pop(self.trainset)
+        self.pop_new = self.compute_pop(self.trainset)
+
         #self.ranking = dict()
         self.n_queries = np.zeros((self.trainset.n_users))
         self.privacy_risk = np.zeros((self.trainset.n_users))
@@ -71,71 +79,33 @@ class UserKNN:
         self.ranking = np.zeros((self.trainset.n_users, self.trainset.n_users))
         for u in self.trainset.all_users():
             if self.sim is not None:
-                simrank = np.zeros(self.trainset.n_users)
-                for k, v in enumerate(np.argsort(self.sim[u, :])):
-                    simrank[v] = k
+                simrank = rankdata(self.sim[u, :], method="max")
             if self.pop is not None:
-                poprank = np.zeros(self.trainset.n_users)
-                for k, v in enumerate(np.argsort(self.pop)):
-                    poprank[v] = k
+                poprank = rankdata(self.pop, method="max")
             if self.act is not None:
-                actrank = np.zeros(self.trainset.n_users)
-                for k, v in enumerate(np.argsort(self.act)):
-                    actrank[v] = k
+                actrank = rankdata(self.act, method="max")
             if self.rr is not None:
-                rrrank = np.zeros(self.trainset.n_users)
-                for k, v in enumerate(np.argsort(self.rr)):
-                    rrrank[v] = k
+                rrrank = rankdata(self.rr, method="max")
             if self.gain is not None:
-                gainrank = np.zeros(self.trainset.n_users)
-                for k, v in enumerate(np.argsort(self.gain[u, :])):
-                    gainrank[v] = k
+                gainrank = rankdata(self.gain[u, :], method="max")
+            if self.rr_expect is not None:
+                rr_expect_rank = rankdata(self.rr_expect, method="max")
+            if self.rr_pop is not None:
+                rr_pop_rank = rankdata(self.rr_pop, method="max")
+            if self.pop_new is not None:
+                pop_new_rank = rankdata(self.pop_new, method="max")
 
-            ranking_u = np.zeros(self.trainset.n_users)
-            for u_ in self.trainset.all_users():
-                if u_ != u:
-                    ranking_u[u_] = 0
-                    if self.act is not None:
-                        ranking_u[u_] += self.tau_1 * actrank[u_]
-                    if self.pop is not None:
-                        ranking_u[u_] += self.tau_2 * poprank[u_]
-                    if self.rr is not None:
-                        ranking_u[u_] += self.tau_3 * rrrank[u_]
-                    if self.gain is not None:
-                        ranking_u[u_] += self.tau_4 * gainrank[u_]
-                    if self.sim is not None:
-                        ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
 
-            self.ranking[u] = ranking_u
-
-            """if self.sim is not None:
-                simrank = {v: k for k, v in dict(enumerate(np.argsort(self.sim[u, :]))).items()}
+            if self.act is not None:
+                self.ranking[u] += self.tau_1 * actrank
             if self.pop is not None:
-                poprank = {v: k for k, v in dict(enumerate(np.argsort(self.pop))).items()}
-            if self.act is not None:
-                actrank = {v: k for k, v in dict(enumerate(np.argsort(self.act))).items()}
+                 self.ranking[u] += self.tau_2 * poprank
             if self.rr is not None:
-                rrrank = {v: k for k, v in dict(enumerate(np.argsort(self.rr))).items()}
+                 self.ranking[u] += self.tau_3 * rrrank
             if self.gain is not None:
-                gainrank = {v: k for k, v in dict(enumerate(np.argsort(self.gain[u, :]))).items()}
-
-
-            ranking_u = dict()
-            for u_ in self.trainset.all_users():
-                if u_ != u:
-                    ranking_u[u_] = 0
-                    if self.act is not None:
-                        ranking_u[u_] += self.tau_1 * actrank[u_]
-                    if self.pop is not None:
-                        ranking_u[u_] += self.tau_2 * poprank[u_]
-                    if self.rr is not None:
-                        ranking_u[u_] += self.tau_3 * rrrank[u_]
-                    if self.gain is not None:
-                        ranking_u[u_] += self.tau_4 * gainrank[u_]
-                    if self.sim is not None:
-                        ranking_u[u_] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank[u_]
-
-            self.ranking[u] = ranking_u"""
+                 self.ranking[u] += self.tau_4 * gainrank
+            if self.sim is not None:
+                 self.ranking[u] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank
 
         return self
 
@@ -169,6 +139,7 @@ class UserKNN:
 
         ranks = self.ranking[u]
         possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in modified_ir if u_ != u]
+        np.random.shuffle(possible_mentors_data)
         possible_mentors_data = sorted(possible_mentors_data, key=lambda t: t[2])[::-1]
 
 
@@ -434,25 +405,70 @@ class UserKNN:
         return reuse_potential
 
     @staticmethod
-    def compute_rr(trainset, function=None):
-        if function:
-            f = function
-        else:
-            f = lambda x: 1.0 / x
-
+    def compute_rr_expect(trainset):
         item_popularities = np.zeros(trainset.n_items)
         for i, ratings in trainset.ir.items():
             item_popularities[i] = float(len(ratings)) / trainset.n_users
 
-        item_ranks = {v: k+1 for k, v in dict(enumerate(np.argsort(item_popularities)[::-1])).items()}
+        rr = np.zeros(trainset.n_users)
+        for u, ratings in trainset.ur.items():
+            acc_rp = 0.0
+            for i, _ in ratings:
+                acc_rp += item_popularities[i]
+            rr[u] = 1 / acc_rp
+        return rr
+
+    @staticmethod
+    def compute_rr_pop(trainset):
+        item_popularities = np.zeros(trainset.n_items)
+        for i, ratings in trainset.ir.items():
+            item_popularities[i] = float(len(ratings)) / trainset.n_users
+
+        rr = np.zeros(trainset.n_users)
+        for uid, ratings in trainset.ur.items():
+            rr[uid] = 1 / np.mean([item_popularities[iid] for iid, r in ratings])
+        return rr
+
+    @staticmethod
+    def compute_pop(trainset):
+        item_popularities = np.zeros(trainset.n_items)
+        for i, ratings in trainset.ir.items():
+            item_popularities[i] = float(len(ratings)) / trainset.n_users
+
+        rr = np.zeros(trainset.n_users)
+        for uid, ratings in trainset.ur.items():
+            rr[uid] = np.mean([item_popularities[iid] for iid, r in ratings])
+        return rr
+
+    @staticmethod
+    def compute_rr(trainset, function=None):
+        item_popularities = np.zeros(trainset.n_items)
+        for i, ratings in trainset.ir.items():
+            item_popularities[i] = float(len(ratings)) / trainset.n_users
+
+        """item_ranks = {v: k+1 for k, v in dict(enumerate(np.argsort(item_popularities)[::-1])).items()}
 
         rr = np.zeros(trainset.n_users)
         for u, ratings in trainset.ur.items():
             rr_u = 0.0
             for i, _ in ratings:
                 rr_u += f(item_ranks[i])
-            rr[u] = rr_u
+            rr[u] = rr_u"""
+
+        rr = np.zeros(trainset.n_users)
+        if function == "expectation":
+            for u, ratings in trainset.ur.items():
+                acc_rp = 0.0
+                for i, _ in ratings:
+                    acc_rp += item_popularities[i]
+                rr[u] = 1 / acc_rp
+        if function == "popularity":
+            rr = np.zeros(trainset.n_users)
+            for uid, ratings in trainset.ur.items():
+                rr[uid] = 1 / np.mean([item_popularities[iid] for iid, r in ratings])
+
         return rr
+
 
     @staticmethod
     def compute_gain(trainset):
