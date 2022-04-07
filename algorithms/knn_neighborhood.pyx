@@ -18,10 +18,10 @@ class UserKNN:
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
-        #self.students = defaultdict(set)
         self.n_mentors_at_q = defaultdict(list)
-        #self.pr_mentors_at_q = defaultdict(list)
-        #self.n_students_at_q = defaultdict(list)
+        self.item_coverage_at_q = defaultdict(list)
+        self.accuracy_at_q = defaultdict(list)
+        self.rating_overlap_at_q = defaultdict(list)
         self.reuse_neighbors = reuse
         self.tau_1 = tau_1
         self.tau_2 = tau_2
@@ -29,11 +29,6 @@ class UserKNN:
         self.tau_4 = tau_4
         self.tau_5 = tau_5
         self.tau_6 = tau_6
-        """self.sim = precomputed_sim.copy() if precomputed_sim is not None else None
-        self.pop = precomputed_pop.copy() if precomputed_pop is not None else None
-        self.act = precomputed_act.copy() if precomputed_act is not None else None
-        self.rr = precomputed_rr.copy() if precomputed_rr is not None else None
-        self.gain = precomputed_gain.copy() if precomputed_gain is not None else None"""
         self.sim = precomputed_sim if precomputed_sim is not None else None
         self.pop = precomputed_pop if precomputed_pop is not None else None
         self.act = precomputed_act if precomputed_act is not None else None
@@ -45,11 +40,12 @@ class UserKNN:
         self.protected = protected
         self.nr_noisy_ratings = 0
 
-        #self.known_secrets = defaultdict(list)
-        #self.known_ratings = defaultdict(list)
-
     def fit(self, trainset):
         self.trainset = trainset
+        self.rated_items = defaultdict(set)
+        for uid, ratings in self.trainset.ur.items():
+            self.rated_items[uid].update([iid for iid, _ in ratings])
+
         self.avg_neighbor_sim = defaultdict(list)
 
         if self.sim is None:
@@ -72,8 +68,8 @@ class UserKNN:
         self.pop_new = self.compute_pop(self.trainset)
 
         #self.ranking = dict()
-        self.n_queries = np.zeros((self.trainset.n_users))
         self.privacy_risk = np.zeros((self.trainset.n_users))
+        self.privacy_risk_dp = np.zeros((self.trainset.n_users))
 
         # Tradeoff
         self.ranking = np.zeros((self.trainset.n_users, self.trainset.n_users))
@@ -178,10 +174,15 @@ class UserKNN:
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
-        #for _, _, _, u_ in k_neighbors:
-            #n_students = len(self.students[u_])
-            #self.n_students_at_q[u_].append(n_students)
-            #self.known_secrets[u].append((u_, i))
+        items_in_neighborhood = set()
+        for neighbor in self.mentors[u]:
+            items_in_neighborhood.update(self.rated_items[neighbor])
+            if len(items_in_neighborhood) >= self.trainset.n_items:
+                break
+        self.item_coverage_at_q[u].append(len(items_in_neighborhood))
+
+        avg_overlap = np.mean([len(self.rated_items[u].intersection(self.rated_items[neighbor])) for neighbor in self.mentors[u]])
+        self.rating_overlap_at_q[u].append(avg_overlap)
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
@@ -189,28 +190,21 @@ class UserKNN:
         est = 0
         pr_unprotected = []
         for (sim, rank, r, u_) in k_neighbors:
-            self.n_queries[u_] += 1
+            self.privacy_risk[u_] += 1
 
             response = r
-            if self.protected and self.n_queries[u_] > self.threshold:
+            if self.protected and self.privacy_risk[u_] > self.threshold:
                 self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
             else:
-                pr_unprotected.append(self.privacy_risk[u_])
-                self.privacy_risk[u_] += 1
+                pr_unprotected.append(self.privacy_risk_dp[u_])
+                self.privacy_risk_dp[u_] += 1
 
             if sim > 0:
                 sum_sim += sim
                 sum_ratings += sim * response
                 actual_k += 1
                 sum_rank += rank
-
-        """if len(pr_unprotected) > 0:
-            self.pr_mentors_at_q[u].append(np.mean(pr_unprotected))
-        else:
-            self.pr_mentors_at_q[u].append(0)"""
-
-
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -260,7 +254,7 @@ class UserKNN:
         self.predictions = []
         self.absolute_errors = defaultdict(list)
         for user_id, item_id, rating in testset:
-            uid, iid, r, r_, details = self.predict(user_id, item_id,  rating)
+            uid, iid, r, r_, details = self.predict(user_id, item_id,  rating, clip=False)
             self.predictions.append((uid, iid, r, r_, details))
             #iuid = self.trainset.to_inner_uid(uid)
             #self.absolute_errors[iuid].append(np.abs(r - r_))
@@ -493,7 +487,7 @@ class UserKNN:
         return gain
 
     def get_privacy_threshold(self):
-        scores = self.n_queries
+        scores = self.privacy_risk
         counts, edges = np.histogram(scores, bins=25)
         kde = KernelDensity(bandwidth=50.0, kernel='gaussian')
         kde.fit(counts.reshape(-1, 1))
@@ -504,7 +498,7 @@ class UserKNN:
 
     def protected_neighbors(self):
         protected_neighbors = set()
-        for uid, q in enumerate(self.privacy_risk):
+        for uid, q in enumerate(self.privacy_risk_dp):
             if self.protected and q >= self.threshold:
                 protected_neighbors.add(uid)
         return protected_neighbors

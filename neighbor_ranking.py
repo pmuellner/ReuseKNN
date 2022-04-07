@@ -15,6 +15,7 @@ import pickle as pl
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import mannwhitneyu, norm, shapiro, ttest_ind
 import sys
+from algorithms.metrics import *
 
 def mann_whitney_u_test(x, y, alternative="less"):
     u, p = mannwhitneyu(x, y, alternative=alternative)
@@ -38,6 +39,28 @@ def dict3d_avg(listlistdict, K, n_folds):
             avg_at_k[key] /= n_folds
         avg.append(avg_at_k)
     return avg
+
+def get_relevant(predictions, threshold=4):
+    relevant = defaultdict(list)
+    for uid, iid, true_r, est, _ in predictions:
+        if est >= threshold:
+            relevant[uid].append(iid)
+
+    return relevant
+
+def get_top_frac(predictions, frac=0.25):
+    # First map the predictions to each user.
+    top_n = defaultdict(list)
+    for uid, iid, true_r, est, _ in predictions:
+        top_n[uid].append((iid, est))
+
+    # Then sort the predictions for each user and retrieve the k highest ones.
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        n = np.ceil(len(user_ratings) * frac).astype(int)
+        top_n[uid] = [iid for iid, _ in user_ratings[:n]]
+
+    return top_n
 
 def get_top_n(predictions, n=10):
     """Return the top-N recommendation for each user from a set of predictions.
@@ -142,7 +165,9 @@ def eval_ratings(models, measurements=[]):
 
         if "item_frequency" in measurements:
             item_frequencies = dict()
-            top_n = get_top_n(m_at_k.predictions, n=10)
+            #top_n = get_top_n(m_at_k.predictions, n=10)
+            #top_n = get_top_frac(m_at_k.predictions, frac=0.25)
+            top_n = get_relevant(m_at_k.predictions, threshold=4)
             for uid, iids in top_n.items():
                 for iid in iids:
                     item_frequencies[iid] = item_frequencies.get(iid, 0) + 1
@@ -159,10 +184,10 @@ def eval_network(models, measurements=[]):
             pr_below, pr_above, pr_all = [], [], []
             for uid in m_at_k.trainset.all_users():
                 if uid in protected_neighbors:
-                    pr_above.append(m_at_k.privacy_risk[uid])
+                    pr_above.append(m_at_k.privacy_risk_dp[uid])
                 else:
-                    pr_below.append(m_at_k.privacy_risk[uid])
-                pr_all.append(m_at_k.privacy_risk[uid])
+                    pr_below.append(m_at_k.privacy_risk_dp[uid])
+                pr_all.append(m_at_k.privacy_risk_dp[uid])
 
             if len(pr_below) > 0:
                 results["pr_below"].append(np.mean(pr_below))
@@ -190,9 +215,9 @@ def eval_network(models, measurements=[]):
             nq_below, nq_above, nq_all = [], [], []
             for uid in m_at_k.trainset.all_users():
                 if uid in protected_neighbors:
-                    nq_above.append(m_at_k.n_queries[uid])
+                    nq_above.append(m_at_k.privacy_risk[uid])
                 else:
-                    nq_below.append(m_at_k.n_queries[uid])
+                    nq_below.append(m_at_k.privacy_risk[uid])
                 nq_all.append(m_at_k.privacy_risk[uid])
 
             if len(nq_below) > 0:
@@ -262,6 +287,25 @@ def size_of_groups(models):
 
     return n_secure, n_vulnerables
 
+def identify_user_groups(trainset, size_in_frac=0.05):
+    item_popularities = np.zeros(trainset.n_items)
+    for iid, ratings in trainset.ir.items():
+        item_popularities[iid] = float(len(ratings)) / trainset.n_users
+
+    user_popularities = np.zeros(trainset.n_items)
+    for uid, ratings in trainset.ur.items():
+        user_popularities[uid] = np.mean([item_popularities[iid] for iid, _ in ratings])
+
+    n = np.round(trainset.n_users * size_in_frac).astype(int)
+    sorted_users = np.argsort(user_popularities)
+    low = sorted_users[:n]
+    high = sorted_users[-n:]
+    med = np.argsort(user_popularities - np.median(user_popularities))[:n]
+
+    return low, med, high
+
+
+
 def mae_per_group(models):
     results = defaultdict(list)
     for m_at_k in models:
@@ -285,6 +329,21 @@ def mae_per_group(models):
         results["high"].append(np.mean(mae_high))
 
         print(m_at_k.trainset.n_users, len(low_users), len(med_users), len(high_users))
+
+    return results
+
+def evaluate(models):
+    results = dict()
+    #results["mean_absolute_error"] = [mean_absolute_error(m) for m in models]
+    #results["avg_neighborhood_size"] = [avg_neighborhood_size(m) for m in models]
+    #results["recommendation_frequency"] = [recommendation_frequency(m, threshold=4) for m in models]
+    #results["fraction_vulnerables"] = [fraction_vulnerables(m) for m in models]
+    #results["avg_privacy_risk"] = [avg_privacy_risk(m) for m in models]
+    #results["avg_privacy_risk_dp"] = [avg_privacy_risk_dp(m) for m in models]
+    #results["avg_neighborhood_size_q"] = [avg_neighborhood_size_q(m, n_queries=100) for m in models]
+    #results["avg_item_coverage_q"] = [avg_item_coverage_q(m, n_queries=100) for m in models]
+    results["avg_rating_overlap_q"] = [avg_rating_overlap_q(m, n_queries=100) for m in models]
+    #results["mean_absolute_error_q"] = [mean_absolute_error_q(m, n_queries=100) for m in models]
 
     return results
 
@@ -372,6 +431,18 @@ for trainset, testset in folds.split(dataset):
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
+
+
+    # TODO delete this
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
+    print(evaluate(models)["avg_rating_overlap_q"][1])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False, "tau_2": 0.5})
+    print(evaluate(models)["avg_rating_overlap_q"][1])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False, "tau_4": 0.5})
+    print(evaluate(models)["avg_rating_overlap_q"][1])
+    exit()
+    # TODO end
+
 
     # Threshold
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
@@ -988,9 +1059,8 @@ for trainset, testset in folds.split(dataset):
 
     sys.stdout = original_stdout  # Reset the standard output to its original value
     f.close()
-
-    n_folds += 1
     """
+    n_folds += 1
     break
 
 
@@ -1020,7 +1090,7 @@ for k in range(len(K)):
     min_queries = min([len(pr_growth_7[f][k]) for f in range(n_folds)])
     avg_pr7.append(np.mean([pr_growth_7[f][k][:min_queries] for f in range(n_folds)], axis=0))"""
 
-"""avg_n_neighbors0, avg_n_neighbors1, avg_n_neighbors2, avg_n_neighbors3, avg_n_neighbors4, avg_n_neighbors5, avg_n_neighbors6, avg_n_neighbors7 = [], [], [], [], [], [], [], []
+avg_n_neighbors0, avg_n_neighbors1, avg_n_neighbors2, avg_n_neighbors3, avg_n_neighbors4, avg_n_neighbors5, avg_n_neighbors6, avg_n_neighbors7 = [], [], [], [], [], [], [], []
 for k in range(len(K)):
     min_queries = min([len(n_neighbors_0[f][k]) for f in range(n_folds)])
     avg_n_neighbors0.append(np.mean([n_neighbors_0[f][k][:min_queries] for f in range(n_folds)], axis=0))
@@ -1046,9 +1116,8 @@ for k in range(len(K)):
     min_queries = min([len(n_neighbors_7[f][k]) for f in range(n_folds)])
     avg_n_neighbors7.append(np.mean([n_neighbors_7[f][k][:min_queries] for f in range(n_folds)], axis=0))
 
-"""
 
-"""f = open("results/" + PATH + "/item_frequency_userknn_full.pkl", "wb")
+f = open("results/" + PATH + "/item_frequency_userknn_full.pkl", "wb")
 pl.dump(dict3d_avg(itemfreq_0, n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/item_frequency_userknn.pkl", "wb")
 pl.dump(dict3d_avg(itemfreq_1, n_folds=n_folds, K=K), f)
@@ -1073,7 +1142,7 @@ np.save("results/" + PATH + "/nr_neighbors_gain.npy", avg_n_neighbors5)
 np.save("results/" + PATH + "/nr_neighbors_userknn_reuse.npy", avg_n_neighbors2)
 np.save("results/" + PATH + "/nr_neighbors_pop_reuse.npy", avg_n_neighbors4)
 np.save("results/" + PATH + "/nr_neighbors_gain_reuse.npy", avg_n_neighbors6)
-np.save("results/" + PATH + "/nr_neighbors_userknn_no.npy", avg_n_neighbors7)"""
+np.save("results/" + PATH + "/nr_neighbors_userknn_no.npy", avg_n_neighbors7)
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
