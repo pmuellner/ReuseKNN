@@ -95,6 +95,8 @@ def run(trainset, testset, K, configuration={}):
     pop = configuration.get("precomputed_pop", None)
     rr = configuration.get("precomputed_rr", None)
     gain = configuration.get("precomputed_gain", None)
+    overlap = configuration.get("precomputed_overlap", None)
+    rated_items = configuration.get("rated_items", None)
     tau_1 = configuration.get("tau_1", 0) #activity
     tau_2 = configuration.get("tau_2", 0) #expect
     tau_3 = configuration.get("tau_3", 0) #rr expect
@@ -108,7 +110,8 @@ def run(trainset, testset, K, configuration={}):
     config_str = str({"reuse": reuse, "tau_1": tau_1, "tau_2": tau_2, "tau_3": tau_3, "tau_4": tau_4, "tau_5": tau_5, "tau_6": tau_6,
                       "precomputed_sim": sim is not None, "precomputed_act": act is not None,
                       "precomputed_pop": pop is not None, "precomputed_rr": rr is not None,
-                      "precomputed_gain": gain is not None, "protected": protected})
+                      "precomputed_gain": gain is not None, "protected": protected,
+                      "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None})
 
     t0 = dt.now()
     print("Started training model with K: " + str(K) + " and " + config_str)
@@ -120,7 +123,7 @@ def run(trainset, testset, K, configuration={}):
             th = 0
         model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_act=act, precomputed_pop=pop,
                         precomputed_rr=rr, precomputed_gain=gain, tau_1=tau_1, tau_2=tau_2, tau_3=tau_3, tau_4=tau_4, tau_5=tau_5, tau_6=tau_6,
-                        threshold=th, protected=protected)
+                        threshold=th, protected=protected, precomputed_overlap=overlap, rated_items=rated_items)
         model.fit(trainset)
         predictions = model.test(testset)
         results["models"].append(model)
@@ -334,7 +337,7 @@ def mae_per_group(models):
 
 def evaluate(models):
     results = dict()
-    #results["mean_absolute_error"] = [mean_absolute_error(m) for m in models]
+    results["mean_absolute_error"] = [mean_absolute_error(m) for m in models]
     #results["avg_neighborhood_size"] = [avg_neighborhood_size(m) for m in models]
     #results["recommendation_frequency"] = [recommendation_frequency(m, threshold=4) for m in models]
     #results["fraction_vulnerables"] = [fraction_vulnerables(m) for m in models]
@@ -342,7 +345,7 @@ def evaluate(models):
     #results["avg_privacy_risk_dp"] = [avg_privacy_risk_dp(m) for m in models]
     #results["avg_neighborhood_size_q"] = [avg_neighborhood_size_q(m, n_queries=100) for m in models]
     #results["avg_item_coverage_q"] = [avg_item_coverage_q(m, n_queries=100) for m in models]
-    results["avg_rating_overlap_q"] = [avg_rating_overlap_q(m, n_queries=100) for m in models]
+    #results["avg_rating_overlap_q"] = [avg_rating_overlap_q(m, n_queries=100) for m in models]
     #results["mean_absolute_error_q"] = [mean_absolute_error_q(m, n_queries=100) for m in models]
 
     return results
@@ -427,6 +430,8 @@ for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1)
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
+    overlap = UserKNN.compute_overlap(trainset)
+    rated_items = UserKNN.compute_rated_items(trainset)
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -434,12 +439,8 @@ for trainset, testset in folds.split(dataset):
 
 
     # TODO delete this
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False})
-    print(evaluate(models)["avg_rating_overlap_q"][1])
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False, "tau_2": 0.5})
-    print(evaluate(models)["avg_rating_overlap_q"][1])
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "protected": False, "tau_4": 0.5})
-    print(evaluate(models)["avg_rating_overlap_q"][1])
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "protected": False})
+    #print(evaluate(models)["avg_rating_overlap_q"][1])
     exit()
     # TODO end
 

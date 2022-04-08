@@ -14,7 +14,7 @@ class PredictionImpossible(Exception):
 
 class UserKNN:
     def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, tau_5=0, tau_6=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, threshold=0, protected=False):
+                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, precomputed_overlap=None, threshold=0, rated_items=None, protected=False):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -34,19 +34,25 @@ class UserKNN:
         self.act = precomputed_act if precomputed_act is not None else None
         self.rr = precomputed_rr if precomputed_rr is not None else None
         self.gain = precomputed_gain if precomputed_gain is not None else None
+        self.overlap = precomputed_overlap if precomputed_overlap is not None else None
         self.random_neighbors = random
         self.privacy_score = None
         self.threshold = int(threshold)
         self.protected = protected
         self.nr_noisy_ratings = 0
+        self.rated_items = None
 
     def fit(self, trainset):
         self.trainset = trainset
-        self.rated_items = defaultdict(set)
-        for uid, ratings in self.trainset.ur.items():
-            self.rated_items[uid].update([iid for iid, _ in ratings])
+        if self.rated_items is None:
+            self.rated_items = self.compute_rated_items(self.trainset)
 
-        self.avg_neighbor_sim = defaultdict(list)
+        self.n_ratings = np.zeros(self.trainset.n_users)
+        for uid, ratings in self.trainset.ur.items():
+            self.n_ratings[uid] = len(ratings)
+
+        if self.overlap is None:
+            self.overlap = self.compute_overlap(self.trainset)
 
         if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
@@ -174,14 +180,15 @@ class UserKNN:
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
+        neighborhood = list(self.mentors[u])
         items_in_neighborhood = set()
-        for neighbor in self.mentors[u]:
+        for neighbor in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
             items_in_neighborhood.update(self.rated_items[neighbor])
             if len(items_in_neighborhood) >= self.trainset.n_items:
                 break
         self.item_coverage_at_q[u].append(len(items_in_neighborhood))
 
-        avg_overlap = np.mean([len(self.rated_items[u].intersection(self.rated_items[neighbor])) for neighbor in self.mentors[u]])
+        avg_overlap = np.mean(self.overlap[u, list(self.mentors[u])])
         self.rating_overlap_at_q[u].append(avg_overlap)
 
         # UserKNN
@@ -280,6 +287,24 @@ class UserKNN:
 
     def default_prediction(self):
         return self.trainset.global_mean
+
+    @staticmethod
+    def compute_rated_items(trainset):
+        rated_items = defaultdict(set)
+        for uid, ratings in trainset.ur.items():
+            rated_items[uid].update([iid for iid, _ in ratings])
+        return rated_items
+
+    @staticmethod
+    def compute_overlap(trainset):
+        overlap = np.zeros((trainset.n_users, trainset.n_users))
+        for _, ratings in trainset.ir.items():
+            for u1, _ in ratings:
+                for u2, _ in ratings:
+                    overlap[u1, u2] += 1
+
+        return overlap
+
 
     @staticmethod
     def _cosine(trainset, min_support):
