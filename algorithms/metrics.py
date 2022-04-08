@@ -49,7 +49,10 @@ def mean_absolute_error_q(model, n_queries):
         for iuid, absolute_errors in model.absolute_errors.items():
             if len(absolute_errors) >= q:
                 #absolute_errors_at_q.append(absolute_errors[q - 1])
-                absolute_errors_at_q.extend(absolute_errors[:q - 1])
+                if len(absolute_errors) == 1:
+                    absolute_errors_at_q.append(absolute_errors[q - 1])
+                else:
+                    absolute_errors_at_q.extend(absolute_errors[:q - 1])
         mae_over_q.append(np.mean(absolute_errors_at_q))
 
     return mae_over_q
