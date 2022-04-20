@@ -180,16 +180,35 @@ class UserKNN:
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
-        neighborhood = list(self.mentors[u])
+        """neighborhood = list(self.mentors[u])
         items_in_neighborhood = set()
-        for neighbor in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
+        for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
             items_in_neighborhood.update(self.rated_items[neighbor])
             if len(items_in_neighborhood) >= self.trainset.n_items:
                 break
+        self.item_coverage_at_q[u].append(len(items_in_neighborhood))"""
+
+        neighborhood = list(self.mentors[u])
+        items_in_neighborhood = set()
+        n_item_ratings = dict()
+        for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
+            if len(items_in_neighborhood) < self.trainset.n_items:
+                items_in_neighborhood.update(self.rated_items[neighbor])
+            for iid in self.rated_items[neighbor]:
+                n_item_ratings[iid] = n_item_ratings.get(iid, 0) + 1
+        for iid in items_in_neighborhood.copy():
+            if n_item_ratings[iid] < self.k:
+                items_in_neighborhood.remove(iid)
         self.item_coverage_at_q[u].append(len(items_in_neighborhood))
 
-        avg_overlap = np.mean(self.overlap[u, list(self.mentors[u])])
+        #avg_overlap = np.mean(self.overlap[u, neighborhood] / self.n_ratings[u])
+        #self.rating_overlap_at_q[u].append(avg_overlap)
+        avg_overlap = np.mean(self.overlap[u, neighborhood])
         self.rating_overlap_at_q[u].append(avg_overlap)
+        #used_neighbors = [u_ for (_, _, _, u_) in k_neighbors]
+        #avg_overlap = np.mean(self.overlap[u, used_neighbors] / self.n_ratings[u])
+        #self.rating_overlap_at_q[u].append(avg_overlap)
+
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
@@ -353,6 +372,106 @@ class UserKNN:
         return sim
 
     @staticmethod
+    def _pearson(trainset, min_support):
+        n_users = trainset.n_users
+        ir = trainset.ir
+        # sum (r_xy * r_x'y) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] prods
+        # number of common ys
+        cdef np.ndarray[np.int_t, ndim=2] freq
+        # sum (r_xy ^ 2) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] sqi
+        # sum (r_x'y ^ 2) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] sqj
+        # the similarity matrix
+        cdef np.ndarray[np.double_t, ndim=2] sim
+
+        cdef int xi, xj
+        cdef double ri, rj
+        cdef int min_sprt = min_support
+
+        avg_user_ratings = np.zeros(trainset.n_users)
+        for uid, ratings in trainset.ur.items():
+            avg_user_ratings[uid] = np.mean([r for _, r in ratings])
+
+        prods = np.zeros((n_users, n_users), np.double)
+        freq = np.zeros((n_users, n_users), np.int)
+        sqi = np.zeros((n_users, n_users), np.double)
+        sqj = np.zeros((n_users, n_users), np.double)
+        sim = np.zeros((n_users, n_users), np.double)
+
+        for y, y_ratings in ir.items():
+            for xi, ri in y_ratings:
+                for xj, rj in y_ratings:
+                    freq[xi, xj] += 1
+                    prods[xi, xj] += (ri - avg_user_ratings[xi]) * (rj - avg_user_ratings[xj])
+                    sqi[xi, xj] += (ri - avg_user_ratings[xi])**2
+                    sqj[xi, xj] += (rj - avg_user_ratings[xj])**2
+
+        for xi in range(n_users):
+            sim[xi, xi] = 1
+            for xj in range(xi + 1, n_users):
+                if freq[xi, xj] < min_sprt:
+                    sim[xi, xj] = 0
+                else:
+                    denum = np.sqrt(sqi[xi, xj] * sqj[xi, xj])
+                    sim[xi, xj] = prods[xi, xj] / denum
+
+                sim[xj, xi] = sim[xi, xj]
+
+        return sim
+
+    @staticmethod
+    def _adjusted_cosine(trainset, min_support):
+        n_users = trainset.n_users
+        ir = trainset.ir
+        # sum (r_xy * r_x'y) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] prods
+        # number of common ys
+        cdef np.ndarray[np.int_t, ndim=2] freq
+        # sum (r_xy ^ 2) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] sqi
+        # sum (r_x'y ^ 2) for common ys
+        cdef np.ndarray[np.double_t, ndim=2] sqj
+        # the similarity matrix
+        cdef np.ndarray[np.double_t, ndim=2] sim
+
+        cdef int xi, xj
+        cdef double ri, rj
+        cdef int min_sprt = min_support
+
+        avg_item_ratings = np.zeros(trainset.n_items)
+        for iid, ratings in trainset.ir.items():
+            avg_item_ratings[iid] = np.mean([r for _, r in ratings])
+
+        prods = np.zeros((n_users, n_users), np.double)
+        freq = np.zeros((n_users, n_users), np.int)
+        sqi = np.zeros((n_users, n_users), np.double)
+        sqj = np.zeros((n_users, n_users), np.double)
+        sim = np.zeros((n_users, n_users), np.double)
+
+        for y, y_ratings in ir.items():
+            for xi, ri in y_ratings:
+                for xj, rj in y_ratings:
+                    freq[xi, xj] += 1
+                    prods[xi, xj] += (ri - avg_item_ratings[xi]) * (rj - avg_item_ratings[xj])
+                    sqi[xi, xj] += (ri - avg_item_ratings[xi])**2
+                    sqj[xi, xj] += (rj - avg_item_ratings[xj])**2
+
+        for xi in range(n_users):
+            sim[xi, xi] = 1
+            for xj in range(xi + 1, n_users):
+                if freq[xi, xj] < min_sprt:
+                    sim[xi, xj] = 0
+                else:
+                    denum = np.sqrt(sqi[xi, xj] * sqj[xi, xj])
+                    sim[xi, xj] = prods[xi, xj] / denum
+
+                sim[xj, xi] = sim[xi, xj]
+
+        return sim
+
+    @staticmethod
     def _jaccard(trainset, min_support):
         n_users = trainset.n_users
         ir = trainset.ir
@@ -393,7 +512,11 @@ class UserKNN:
     def compute_similarities(trainset, min_support, kind="cosine"):
         if kind == "cosine":
             sim = UserKNN._cosine(trainset, min_support)
-        elif kind=="jaccard":
+        elif kind == "adjusted_cosine":
+            sim = UserKNN._adjusted_cosine(trainset, min_support)
+        elif kind == "pearson":
+            sim = UserKNN._pearson(trainset, min_support)
+        elif kind == "jaccard":
             sim = UserKNN._jaccard(trainset, min_support)
         else:
             sim = None
