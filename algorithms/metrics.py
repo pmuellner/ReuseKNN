@@ -102,8 +102,11 @@ def recommendation_frequency(model, threshold, users=None):
     return frequencies
 
 
-def fraction_vulnerables(model):
-    return np.mean(model.privacy_risk >= model.threshold)
+def fraction_vulnerables(model, users=None):
+    if users:
+        return np.mean(model.privacy_risk[users] >= model.threshold[users])
+    else:
+        return np.mean(model.privacy_risk >= model.threshold)
 
 
 def avg_privacy_risk(model, users=None):

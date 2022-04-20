@@ -17,8 +17,8 @@ from scipy.stats import mannwhitneyu, norm, shapiro, ttest_ind
 import sys
 from algorithms import metrics
 
-def identify_user_groups(trainset, size_in_frac=0.05):
-    item_popularities = np.zeros(trainset.n_items)
+def identify_user_groups(trainset, size_in_frac=0.2):
+    """item_popularities = np.zeros(trainset.n_items)
     for iid, ratings in trainset.ir.items():
         item_popularities[iid] = float(len(ratings)) / trainset.n_users
 
@@ -30,7 +30,28 @@ def identify_user_groups(trainset, size_in_frac=0.05):
     sorted_users = np.argsort(user_popularities)
     low = sorted_users[:n]
     high = sorted_users[-n:]
-    med = np.argsort(user_popularities - np.median(user_popularities))[:n]
+    med = np.argsort(user_popularities - np.median(user_popularities))[:n]"""
+
+    # user groups as in "The Unfairness of Popularity Bias in Recommendation" (Abdollahpouri, Mansoury, Burke, Mobasher)
+    item_popularities = np.zeros(trainset.n_items)
+    for iid, ratings in trainset.ir.items():
+        item_popularities[iid] = float(len(ratings)) / trainset.n_users
+
+    n = np.round(trainset.n_items * 0.2).astype(int)
+    popular_items = np.argsort(item_popularities)[-n:]
+    user_popularities = np.zeros(trainset.n_users)
+    for uid, ratings in trainset.ur.items():
+        n_popular_items = 0
+        for iid, _ in ratings:
+            if iid in popular_items:
+                n_popular_items += 1
+        user_popularities[uid] = n_popular_items / len(ratings)
+
+    n = np.round(trainset.n_users * size_in_frac).astype(int)
+    sorted_users = np.argsort(user_popularities)
+    low = sorted_users[:n]
+    high = sorted_users[-n:]
+    med = set(trainset.all_users()).difference(low).difference(high)
 
     return low, med, high
 
@@ -106,14 +127,20 @@ def run(trainset, testset, K, configuration={}):
 
     return results["models"], results["predictions"]
 
-def evaluate(models):
+def evaluate_user_groups(models, **kwargs):
     results = dict()
-    results["mean_absolute_error"] = [metrics.mean_absolute_error(m) for m in models]
-    #results["avg_neighborhood_size"] = [metrics.avg_neighborhood_size(m) for m in models]
-    results["recommendation_frequency"] = [metrics.recommendation_frequency(m, threshold=4) for m in models]
-    results["fraction_vulnerables"] = [metrics.fraction_vulnerables(m) for m in models]
-    #results["avg_privacy_risk"] = [metrics.avg_privacy_risk(m) for m in models]
-    results["avg_privacy_risk_dp"] = [metrics.avg_privacy_risk_dp(m) for m in models]
+    for group, users in kwargs.items():
+        results[group] = evaluate(models, users=users)
+
+    return results
+
+
+def evaluate(models, users=None):
+    results = dict()
+    results["mean_absolute_error"] = [metrics.mean_absolute_error(m, users=users) for m in models]
+    results["recommendation_frequency"] = [metrics.recommendation_frequency(m, threshold=4, users=users) for m in models]
+    results["fraction_vulnerables"] = [metrics.fraction_vulnerables(m, users=users) for m in models]
+    results["avg_privacy_risk_dp"] = [metrics.avg_privacy_risk_dp(m, users=users) for m in models]
     results["avg_neighborhood_size_q"] = [metrics.avg_neighborhood_size_q(m, n_queries=100) for m in models]
     results["avg_item_coverage_q"] = [metrics.avg_item_coverage_q(m, n_queries=100) for m in models]
     results["avg_rating_overlap_q"] = [metrics.avg_rating_overlap_q(m, n_queries=100) for m in models]
@@ -168,7 +195,7 @@ print(PATH)
 
 dataset = Dataset.load_from_df(data_df, reader=reader)
 n_folds = 0
-folds = KFold(n_splits=5)
+folds = KFold(n_splits=5, random_state=42)
 
 K = [5, 10, 15, 20, 25, 30]
 mean_absolute_error = defaultdict(list)
@@ -181,11 +208,16 @@ rating_overlap_q = defaultdict(list)
 mean_absolute_error_q = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
-    sim = UserKNN.compute_similarities(trainset, min_support=1)
+    #sim = UserKNN.compute_similarities(trainset, min_support=1)
+    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="adjusted_cosine")
+    sim = UserKNN.compute_similarities(trainset, min_support=1, kind="pearson")
+    print(sim)
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
     overlap = UserKNN.compute_overlap(trainset)
     rated_items = UserKNN.compute_rated_items(trainset)
+
+    low, med, high = identify_user_groups(trainset)
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -226,6 +258,7 @@ for trainset, testset in folds.split(dataset):
     rating_overlap_q["userknn_no"].append(results["avg_rating_overlap_q"])
     mean_absolute_error_q["userknn_no"].append(results["mean_absolute_error_q"])
     del models, results
+
 
     # KNN + full protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [0 for _ in range(len(K))], "protected": True})
@@ -314,7 +347,7 @@ for trainset, testset in folds.split(dataset):
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
     n_folds += 1
-    #break
+    break
 
 avg_neighborhood_size_q_userknn = avg_over_q(neighborhood_size_q["userknn"], n_folds=n_folds, n_ks=len(K))
 avg_neighborhood_size_q_userknn_reuse = avg_over_q(neighborhood_size_q["userknn_reuse"], n_folds=n_folds, n_ks=len(K))
@@ -343,10 +376,6 @@ avg_mae_q_expect = avg_over_q(mean_absolute_error_q["expect"], n_folds=n_folds, 
 avg_mae_q_expect_reuse = avg_over_q(mean_absolute_error_q["expect_reuse"], n_folds=n_folds, n_ks=len(K))
 avg_mae_q_gain = avg_over_q(mean_absolute_error_q["gain"], n_folds=n_folds, n_ks=len(K))
 avg_mae_q_gain_reuse = avg_over_q(mean_absolute_error_q["gain_reuse"], n_folds=n_folds, n_ks=len(K))
-
-
-
-
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
@@ -379,71 +408,49 @@ np.save("results/" + PATH + "/mae_q_expect_reuse.npy", avg_mae_q_expect_reuse)
 np.save("results/" + PATH + "/mae_q_gain.npy", avg_mae_q_gain)
 np.save("results/" + PATH + "/mae_q_gain_reuse.npy", avg_mae_q_gain_reuse)
 
+np.save("results/" + PATH + "/mae_userknn_no.npy", np.mean(mean_absolute_error["userknn_no"], axis=0))
+np.save("results/" + PATH + "/mae_userknn_full.npy", np.mean(mean_absolute_error["userknn_full"], axis=0))
+np.save("results/" + PATH + "/mae_userknn.npy", np.mean(mean_absolute_error["userknn"], axis=0))
+np.save("results/" + PATH + "/mae_userknn_reuse.npy", np.mean(mean_absolute_error["userknn_reuse"], axis=0))
+np.save("results/" + PATH + "/mae_expect.npy", np.mean(mean_absolute_error["expect"], axis=0))
+np.save("results/" + PATH + "/mae_expect_reuse.npy", np.mean(mean_absolute_error["expect_reuse"], axis=0))
+np.save("results/" + PATH + "/mae_gain.npy", np.mean(mean_absolute_error["gain"], axis=0))
+np.save("results/" + PATH + "/mae_gain_reuse.npy", np.mean(mean_absolute_error["gain_reuse"], axis=0))
 
+np.save("results/" + PATH + "/privacy_risk_dp_userknn_no.npy", np.mean(privacy_risk_dp["userknn_no"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_userknn_full.npy", np.mean(privacy_risk_dp["userknn_full"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_userknn.npy", np.mean(privacy_risk_dp["userknn"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_userknn_reuse.npy", np.mean(privacy_risk_dp["userknn_reuse"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_expect.npy", np.mean(privacy_risk_dp["expect"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_expect_reuse.npy", np.mean(privacy_risk_dp["expect_reuse"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_gain.npy", np.mean(privacy_risk_dp["gain"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_gain_reuse.npy", np.mean(privacy_risk_dp["gain_reuse"], axis=0))
 
+np.save("results/" + PATH + "/fraction_vulnerables_userknn_no.npy", np.mean(fraction_vulnerables["userknn_no"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_userknn_full.npy", np.mean(fraction_vulnerables["userknn_full"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_userknn.npy", np.mean(fraction_vulnerables["userknn"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_userknn_reuse.npy", np.mean(fraction_vulnerables["userknn_reuse"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_expect.npy", np.mean(fraction_vulnerables["expect"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_expect_reuse.npy", np.mean(fraction_vulnerables["expect_reuse"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_gain.npy", np.mean(fraction_vulnerables["gain"], axis=0))
+np.save("results/" + PATH + "/fraction_vulnerables_gain_reuse.npy", np.mean(fraction_vulnerables["gain_reuse"], axis=0))
 
-"""f = open("results/" + PATH + "/item_frequency_userknn_full.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_0, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_userknn.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_1, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_pop.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_3, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_gain.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_5, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_userknn_reuse.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_2, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_pop_reuse.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_4, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_gain_reuse.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_6, n_folds=n_folds, K=K), f)
-f = open("results/" + PATH + "/item_frequency_userknn_no.pkl", "wb")
-pl.dump(dict3d_avg(itemfreq_7, n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_userknn_no.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["userknn_no"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_userknn_full.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["userknn_full"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_userknn.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["userknn"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_userknn_reuse.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["userknn_reuse"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_expect.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["expect"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_expect_reuse.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["expect_reuse"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_gain.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["gain"], n_folds=n_folds, K=K), f)
+f = open("results/" + PATH + "/recommendation_frequency_gain_reuse.pkl", "wb")
+pl.dump(dict3d_avg(recommendation_frequency["gain_reuse"], n_folds=n_folds, K=K), f)
 f.close()
 
-np.save("results/" + PATH + "/nr_neighbors_userknn_full.npy", avg_n_neighbors0)
-np.save("results/" + PATH + "/nr_neighbors_userknn.npy", avg_n_neighbors1)
-np.save("results/" + PATH + "/nr_neighbors_pop.npy", avg_n_neighbors3)
-np.save("results/" + PATH + "/nr_neighbors_gain.npy", avg_n_neighbors5)
-np.save("results/" + PATH + "/nr_neighbors_userknn_reuse.npy", avg_n_neighbors2)
-np.save("results/" + PATH + "/nr_neighbors_pop_reuse.npy", avg_n_neighbors4)
-np.save("results/" + PATH + "/nr_neighbors_gain_reuse.npy", avg_n_neighbors6)
-np.save("results/" + PATH + "/nr_neighbors_userknn_no.npy", avg_n_neighbors7)
 
-np.save("results/" + PATH + "/K.npy", K)
-np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
-
-np.save("results/" + PATH + "/coverage_userknn_full.npy", np.mean(coverage_0, axis=0))
-np.save("results/" + PATH + "/coverage_userknn.npy", np.mean(coverage_1, axis=0))
-np.save("results/" + PATH + "/coverage_pop.npy", np.mean(coverage_3, axis=0))
-np.save("results/" + PATH + "/coverage_gain.npy", np.mean(coverage_5, axis=0))
-np.save("results/" + PATH + "/coverage_userknn_reuse.npy", np.mean(coverage_2, axis=0))
-np.save("results/" + PATH + "/coverage_pop_reuse.npy", np.mean(coverage_4, axis=0))
-np.save("results/" + PATH + "/coverage_gain_reuse.npy", np.mean(coverage_6, axis=0))
-np.save("results/" + PATH + "/coverage_userknn_no.npy", np.mean(coverage_7, axis=0))
-
-np.save("results/" + PATH + "/mae_all_userknn_full.npy", np.mean(mae_all_0, axis=0))
-np.save("results/" + PATH + "/mae_all_userknn.npy", np.mean(mae_all_1, axis=0))
-np.save("results/" + PATH + "/mae_all_pop.npy", np.mean(mae_all_3, axis=0))
-np.save("results/" + PATH + "/mae_all_gain.npy", np.mean(mae_all_5, axis=0))
-np.save("results/" + PATH + "/mae_all_userknn_reuse.npy", np.mean(mae_all_2, axis=0))
-np.save("results/" + PATH + "/mae_all_pop_reuse.npy", np.mean(mae_all_4, axis=0))
-np.save("results/" + PATH + "/mae_all_gain_reuse.npy", np.mean(mae_all_6, axis=0))
-np.save("results/" + PATH + "/mae_all_userknn_no.npy", np.mean(mae_all_7, axis=0))
-
-np.save("results/" + PATH + "/pr_all_userknn_full.npy", np.mean(pr_all_0, axis=0))
-np.save("results/" + PATH + "/pr_all_userknn.npy", np.mean(pr_all_1, axis=0))
-np.save("results/" + PATH + "/pr_all_pop.npy", np.mean(pr_all_3, axis=0))
-np.save("results/" + PATH + "/pr_all_gain.npy", np.mean(pr_all_5, axis=0))
-np.save("results/" + PATH + "/pr_all_userknn_reuse.npy", np.mean(pr_all_2, axis=0))
-np.save("results/" + PATH + "/pr_all_pop_reuse.npy", np.mean(pr_all_4, axis=0))
-np.save("results/" + PATH + "/pr_all_gain_reuse.npy", np.mean(pr_all_6, axis=0))
-np.save("results/" + PATH + "/pr_all_userknn_no.npy", np.mean(pr_all_7, axis=0))
-
-np.save("results/" + PATH + "/vulnerables_userknn_full.npy", np.mean(vulnerables_0, axis=0))
-np.save("results/" + PATH + "/vulnerables_userknn.npy", np.mean(vulnerables_1, axis=0))
-np.save("results/" + PATH + "/vulnerables_pop.npy", np.mean(vulnerables_3, axis=0))
-np.save("results/" + PATH + "/vulnerables_gain.npy", np.mean(vulnerables_5, axis=0))
-np.save("results/" + PATH + "/vulnerables_userknn_reuse.npy", np.mean(vulnerables_2, axis=0))
-np.save("results/" + PATH + "/vulnerables_pop_reuse.npy", np.mean(vulnerables_4, axis=0))
-np.save("results/" + PATH + "/vulnerables_gain_reuse.npy", np.mean(vulnerables_6, axis=0))
-np.save("results/" + PATH + "/vulnerables_userknn_no.npy", np.mean(vulnerables_7, axis=0))"""
