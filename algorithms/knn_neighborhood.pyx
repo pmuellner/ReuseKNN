@@ -180,16 +180,8 @@ class UserKNN:
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
-        """neighborhood = list(self.mentors[u])
-        items_in_neighborhood = set()
-        for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
-            items_in_neighborhood.update(self.rated_items[neighbor])
-            if len(items_in_neighborhood) >= self.trainset.n_items:
-                break
-        self.item_coverage_at_q[u].append(len(items_in_neighborhood))"""
-
         neighborhood = list(self.mentors[u])
-        items_in_neighborhood = set()
+        """items_in_neighborhood = set()
         n_item_ratings = dict()
         for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
             if len(items_in_neighborhood) < self.trainset.n_items:
@@ -199,16 +191,10 @@ class UserKNN:
         for iid in items_in_neighborhood.copy():
             if n_item_ratings[iid] < self.k:
                 items_in_neighborhood.remove(iid)
-        self.item_coverage_at_q[u].append(len(items_in_neighborhood))
+        self.item_coverage_at_q[u].append(len(items_in_neighborhood))"""
 
-        #avg_overlap = np.mean(self.overlap[u, neighborhood] / self.n_ratings[u])
-        #self.rating_overlap_at_q[u].append(avg_overlap)
         avg_overlap = np.mean(self.overlap[u, neighborhood])
         self.rating_overlap_at_q[u].append(avg_overlap)
-        #used_neighbors = [u_ for (_, _, _, u_) in k_neighbors]
-        #avg_overlap = np.mean(self.overlap[u, used_neighbors] / self.n_ratings[u])
-        #self.rating_overlap_at_q[u].append(avg_overlap)
-
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0

@@ -15,7 +15,7 @@ import pickle as pl
 from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import mannwhitneyu, norm, shapiro, ttest_ind
 import sys
-from algorithms import metrics
+from algorithms import metrics, evaluation
 
 def identify_user_groups(trainset, size_in_frac=0.2):
     """item_popularities = np.zeros(trainset.n_items)
@@ -68,6 +68,9 @@ def dict3d_avg(listlistdict, K, n_folds):
     return avg
 
 def avg_over_q(data, n_folds, n_ks):
+    #print(data)
+    #n_folds = len(data)
+    #n_ks = len(data[0])
     average = []
     for k in range(n_ks):
         min_queries = min([len(data[f][k]) for f in range(n_folds)])
@@ -127,26 +130,6 @@ def run(trainset, testset, K, configuration={}):
 
     return results["models"], results["predictions"]
 
-def evaluate_user_groups(models, **kwargs):
-    results = dict()
-    for group, users in kwargs.items():
-        results[group] = evaluate(models, users=users)
-
-    return results
-
-
-def evaluate(models, users=None):
-    results = dict()
-    results["mean_absolute_error"] = [metrics.mean_absolute_error(m, users=users) for m in models]
-    results["recommendation_frequency"] = [metrics.recommendation_frequency(m, threshold=4, users=users) for m in models]
-    results["fraction_vulnerables"] = [metrics.fraction_vulnerables(m, users=users) for m in models]
-    results["avg_privacy_risk_dp"] = [metrics.avg_privacy_risk_dp(m, users=users) for m in models]
-    results["avg_neighborhood_size_q"] = [metrics.avg_neighborhood_size_q(m, n_queries=100) for m in models]
-    results["avg_item_coverage_q"] = [metrics.avg_item_coverage_q(m, n_queries=100) for m in models]
-    results["avg_rating_overlap_q"] = [metrics.avg_rating_overlap_q(m, n_queries=100) for m in models]
-    results["mean_absolute_error_q"] = [metrics.mean_absolute_error_q(m, n_queries=100) for m in models]
-
-    return results
 
 
 if len(sys.argv) == 3:
@@ -198,20 +181,20 @@ n_folds = 0
 folds = KFold(n_splits=5, random_state=42)
 
 K = [5, 10, 15, 20, 25, 30]
+K_q_idx = 1
+#K = [5, 10, 20]
 mean_absolute_error = defaultdict(list)
 recommendation_frequency = defaultdict(list)
 fraction_vulnerables = defaultdict(list)
 privacy_risk_dp = defaultdict(list)
 neighborhood_size_q = defaultdict(list)
-item_coverage_q = defaultdict(list)
 rating_overlap_q = defaultdict(list)
-mean_absolute_error_q = defaultdict(list)
+significance_test_results = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
-    #sim = UserKNN.compute_similarities(trainset, min_support=1)
+    sim = UserKNN.compute_similarities(trainset, min_support=1, kind="cosine")
     #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="adjusted_cosine")
-    sim = UserKNN.compute_similarities(trainset, min_support=1, kind="pearson")
-    print(sim)
+    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="pearson")
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
     overlap = UserKNN.compute_overlap(trainset)
@@ -235,111 +218,98 @@ for trainset, testset in folds.split(dataset):
 
     # KNN
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, userknn_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["userknn"].append(results["avg_item_coverage_q"])
     rating_overlap_q["userknn"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["userknn"].append(results["mean_absolute_error_q"])
     del models, results
 
     # KNN + no protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "protected": False})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_no"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn_no"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_no"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_no"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_no"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["userknn_no"].append(results["avg_item_coverage_q"])
     rating_overlap_q["userknn_no"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["userknn_no"].append(results["mean_absolute_error_q"])
-    del models, results
-
+    significance_test_results["userknn_no"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # KNN + full protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [0 for _ in range(len(K))], "protected": True})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_full"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn_full"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_full"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_full"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_full"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["userknn_full"].append(results["avg_item_coverage_q"])
     rating_overlap_q["userknn_full"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["userknn_full"].append(results["mean_absolute_error_q"])
-    del models, results
-
+    significance_test_results["userknn_full"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # KNN + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_reuse"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_reuse"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["userknn_reuse"].append(results["avg_item_coverage_q"])
     rating_overlap_q["userknn_reuse"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["userknn_reuse"].append(results["mean_absolute_error_q"])
-    del models, results
+    significance_test_results["userknn_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # Popularity
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["expect"].append(results["mean_absolute_error"])
     recommendation_frequency["expect"].append(results["recommendation_frequency"])
     fraction_vulnerables["expect"].append(results["fraction_vulnerables"])
     privacy_risk_dp["expect"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["expect"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["expect"].append(results["avg_item_coverage_q"])
     rating_overlap_q["expect"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["expect"].append(results["mean_absolute_error_q"])
-    del models, results
-
+    significance_test_results["expect"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # Popularity + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["expect_reuse"].append(results["mean_absolute_error"])
     recommendation_frequency["expect_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["expect_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["expect_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["expect_reuse"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["expect_reuse"].append(results["avg_item_coverage_q"])
     rating_overlap_q["expect_reuse"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["expect_reuse"].append(results["mean_absolute_error_q"])
-    del models, results
+    significance_test_results["expect_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # Gain
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain"].append(results["mean_absolute_error"])
     recommendation_frequency["gain"].append(results["recommendation_frequency"])
     fraction_vulnerables["gain"].append(results["fraction_vulnerables"])
     privacy_risk_dp["gain"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["gain"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["gain"].append(results["avg_item_coverage_q"])
     rating_overlap_q["gain"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["gain"].append(results["mean_absolute_error_q"])
-    del models, results
-
+    significance_test_results["gain"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     # Gain + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
-    results = evaluate(models)
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain_reuse"].append(results["mean_absolute_error"])
     recommendation_frequency["gain_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["gain_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["gain_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["gain_reuse"].append(results["avg_neighborhood_size_q"])
-    item_coverage_q["gain_reuse"].append(results["avg_item_coverage_q"])
     rating_overlap_q["gain_reuse"].append(results["avg_rating_overlap_q"])
-    mean_absolute_error_q["gain_reuse"].append(results["mean_absolute_error_q"])
-    del models, results
+    significance_test_results["gain_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    del models, results, results_samples
 
     del sim, gain, pop, overlap, rated_items
     process = psutil.Process(os.getpid())
@@ -349,33 +319,23 @@ for trainset, testset in folds.split(dataset):
     n_folds += 1
     break
 
-avg_neighborhood_size_q_userknn = avg_over_q(neighborhood_size_q["userknn"], n_folds=n_folds, n_ks=len(K))
-avg_neighborhood_size_q_userknn_reuse = avg_over_q(neighborhood_size_q["userknn_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_neighborhood_size_q_expect = avg_over_q(neighborhood_size_q["expect"], n_folds=n_folds, n_ks=len(K))
-avg_neighborhood_size_q_expect_reuse = avg_over_q(neighborhood_size_q["expect_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_neighborhood_size_q_gain = avg_over_q(neighborhood_size_q["gain"], n_folds=n_folds, n_ks=len(K))
-avg_neighborhood_size_q_gain_reuse = avg_over_q(neighborhood_size_q["gain_reuse"], n_folds=n_folds, n_ks=len(K))
+f = open("results/" + PATH + "/significance_test_results.pkl", "wb")
+pl.dump(significance_test_results, f)
+f.close()
 
-avg_item_coverage_q_userknn = avg_over_q(item_coverage_q["userknn"], n_folds=n_folds, n_ks=len(K))
-avg_item_coverage_q_userknn_reuse = avg_over_q(item_coverage_q["userknn_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_item_coverage_q_expect = avg_over_q(item_coverage_q["expect"], n_folds=n_folds, n_ks=len(K))
-avg_item_coverage_q_expect_reuse = avg_over_q(item_coverage_q["expect_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_item_coverage_q_gain = avg_over_q(item_coverage_q["gain"], n_folds=n_folds, n_ks=len(K))
-avg_item_coverage_q_gain_reuse = avg_over_q(item_coverage_q["gain_reuse"], n_folds=n_folds, n_ks=len(K))
+avg_neighborhood_size_q_userknn = avg_over_q(neighborhood_size_q["userknn"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_userknn_reuse = avg_over_q(neighborhood_size_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_expect = avg_over_q(neighborhood_size_q["expect"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_expect_reuse = avg_over_q(neighborhood_size_q["expect_reuse"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_gain = avg_over_q(neighborhood_size_q["gain"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_gain_reuse = avg_over_q(neighborhood_size_q["gain_reuse"], n_folds=n_folds, n_ks=1)
 
-avg_rating_overlap_q_userknn = avg_over_q(rating_overlap_q["userknn"], n_folds=n_folds, n_ks=len(K))
-avg_rating_overlap_q_userknn_reuse = avg_over_q(rating_overlap_q["userknn_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_rating_overlap_q_expect = avg_over_q(rating_overlap_q["expect"], n_folds=n_folds, n_ks=len(K))
-avg_rating_overlap_q_expect_reuse = avg_over_q(rating_overlap_q["expect_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_rating_overlap_q_gain = avg_over_q(rating_overlap_q["gain"], n_folds=n_folds, n_ks=len(K))
-avg_rating_overlap_q_gain_reuse = avg_over_q(rating_overlap_q["gain_reuse"], n_folds=n_folds, n_ks=len(K))
-
-avg_mae_q_userknn = avg_over_q(mean_absolute_error_q["userknn"], n_folds=n_folds, n_ks=len(K))
-avg_mae_q_userknn_reuse = avg_over_q(mean_absolute_error_q["userknn_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_mae_q_expect = avg_over_q(mean_absolute_error_q["expect"], n_folds=n_folds, n_ks=len(K))
-avg_mae_q_expect_reuse = avg_over_q(mean_absolute_error_q["expect_reuse"], n_folds=n_folds, n_ks=len(K))
-avg_mae_q_gain = avg_over_q(mean_absolute_error_q["gain"], n_folds=n_folds, n_ks=len(K))
-avg_mae_q_gain_reuse = avg_over_q(mean_absolute_error_q["gain_reuse"], n_folds=n_folds, n_ks=len(K))
+avg_rating_overlap_q_userknn = avg_over_q(rating_overlap_q["userknn"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_userknn_reuse = avg_over_q(rating_overlap_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_expect = avg_over_q(rating_overlap_q["expect"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_expect_reuse = avg_over_q(rating_overlap_q["expect_reuse"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_gain = avg_over_q(rating_overlap_q["gain"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_gain_reuse = avg_over_q(rating_overlap_q["gain_reuse"], n_folds=n_folds, n_ks=1)
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
@@ -387,26 +347,12 @@ np.save("results/" + PATH + "/neighborhood_size_q_expect_reuse.npy", avg_neighbo
 np.save("results/" + PATH + "/neighborhood_size_q_gain.npy", avg_neighborhood_size_q_gain)
 np.save("results/" + PATH + "/neighborhood_size_q_gain_reuse.npy", avg_neighborhood_size_q_gain_reuse)
 
-np.save("results/" + PATH + "/item_coverage_q_userknn.npy", avg_item_coverage_q_userknn)
-np.save("results/" + PATH + "/item_coverage_q_userknn_reuse.npy", avg_item_coverage_q_userknn_reuse)
-np.save("results/" + PATH + "/item_coverage_q_expect.npy", avg_item_coverage_q_expect)
-np.save("results/" + PATH + "/item_coverage_q_expect_reuse.npy", avg_item_coverage_q_expect_reuse)
-np.save("results/" + PATH + "/item_coverage_q_gain.npy", avg_item_coverage_q_gain)
-np.save("results/" + PATH + "/item_coverage_q_gain_reuse.npy", avg_item_coverage_q_gain_reuse)
-
 np.save("results/" + PATH + "/rating_overlap_q_userknn.npy", avg_rating_overlap_q_userknn)
 np.save("results/" + PATH + "/rating_overlap_q_userknn_reuse.npy", avg_rating_overlap_q_userknn_reuse)
 np.save("results/" + PATH + "/rating_overlap_q_expect.npy", avg_rating_overlap_q_expect)
 np.save("results/" + PATH + "/rating_overlap_q_expect_reuse.npy", avg_rating_overlap_q_expect_reuse)
 np.save("results/" + PATH + "/rating_overlap_q_gain.npy", avg_rating_overlap_q_gain)
 np.save("results/" + PATH + "/rating_overlap_q_gain_reuse.npy", avg_rating_overlap_q_gain_reuse)
-
-np.save("results/" + PATH + "/mae_q_userknn.npy", avg_mae_q_userknn)
-np.save("results/" + PATH + "/mae_q_userknn_reuse.npy", avg_mae_q_userknn_reuse)
-np.save("results/" + PATH + "/mae_q_expect.npy", avg_mae_q_expect)
-np.save("results/" + PATH + "/mae_q_expect_reuse.npy", avg_mae_q_expect_reuse)
-np.save("results/" + PATH + "/mae_q_gain.npy", avg_mae_q_gain)
-np.save("results/" + PATH + "/mae_q_gain_reuse.npy", avg_mae_q_gain_reuse)
 
 np.save("results/" + PATH + "/mae_userknn_no.npy", np.mean(mean_absolute_error["userknn_no"], axis=0))
 np.save("results/" + PATH + "/mae_userknn_full.npy", np.mean(mean_absolute_error["userknn_full"], axis=0))
