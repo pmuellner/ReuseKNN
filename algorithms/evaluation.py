@@ -15,6 +15,21 @@ def evaluate(models, models_q):
     results, results_samples = _evaluate(models)
     results_q, results_q_samples = _evaluate_q(models_q)
 
+    print([np.mean(m.nr_noisy_ratings) for m in models])
+    avg = []
+    for m in models:
+        nominator = 0.0
+        denominator = 0.0
+        for uid in m.trainset.all_users():
+            pr = m.privacy_risk[uid]
+            frac = len(m.trainset.ur[uid]) / m.trainset.n_ratings
+            nominator += pr * frac
+            denominator += pr
+        avg.append(nominator / denominator)
+    print(avg)
+    print([np.mean(m.avg_sims) for m in models])
+
+
     return {**results, **results_q}, {**results_samples, **results_q_samples}
 
 def _evaluate_q(models):
@@ -40,12 +55,16 @@ def _evaluate(models, users=None):
         avg, sample = metrics.avg_privacy_risk_dp(m, users=users)
         results["avg_privacy_risk_dp"].append(avg)
         results_samples["avg_privacy_risk_dp"].append(sample)
+        avg, sample = metrics.avg_privacy_risk(m, users=users)
+        results["avg_privacy_risk"].append(avg)
+        results_samples["avg_privacy_risk"].append(sample)
+
+        below_threshold_pr = (m.privacy_risk[m.privacy_risk < m.threshold])
+        results["avg_privacy_risk_dp_secures"].append(np.mean(below_threshold_pr))
+        results_samples["avg_privacy_risk_dp_secures"].append(below_threshold_pr)
 
         results["fraction_vulnerables"].append(metrics.fraction_vulnerables(m, users=users))
-        results["recommendation_frequency"].append(metrics.recommendation_frequency(m, threshold=4, users=users))
-        #results["avg_recommendation_popularity"].append(metrics.avg_recommendation_popularity(m, threshold=4))
-        #results["gini_index"].append(metrics.gini_index(m, threshold=4))
-        #results["gap"].append(metrics.gap(m, threshold=4))
+        results["recommendation_frequency"].append(metrics.recommendation_frequency(m, n=10, users=users))
 
     return results, results_samples
 
@@ -64,11 +83,23 @@ def significance_tests(results1, results2):
     pr_significance["=="] = _significance_test(results1["avg_privacy_risk_dp"], results2["avg_privacy_risk_dp"], h0="==")
     significance["privacy_risk_dp"] = pr_significance
 
+    pr_secure_significance = dict()
+    pr_secure_significance["<"] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0="<")
+    pr_secure_significance[">"] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0=">")
+    pr_secure_significance["=="] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0="==")
+    significance["privacy_risk_dp_secures"] = pr_secure_significance
+
     neighborhood_size_significance = dict()
     neighborhood_size_significance["<"] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0="<")
     neighborhood_size_significance[">"] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0=">")
     neighborhood_size_significance["=="] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0="==")
     significance["avg_neighborhood_size_q"] = neighborhood_size_significance
+
+    rating_overlap_significance = dict()
+    rating_overlap_significance["<"] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0="<")
+    rating_overlap_significance[">"] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0=">")
+    rating_overlap_significance["=="] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0="==")
+    significance["avg_rating_overlap_q"] = rating_overlap_significance
 
     return significance
 
@@ -111,10 +142,14 @@ def _significance_test_q(x, y, h0="<"):
 
 
 def _significance_test(x, y, h0="<"):
-    n_ks, n_samples = np.array(x).shape
+    n_ks = len(x)
+    n_samples = len(x[0])
+
+    #n_ks, n_samples = np.array(x).shape
     results = []
     for k_idx in range(n_ks):
         if np.array_equal(x[k_idx], y[k_idx]):
+            print("x equal y")
             results.append({"p": np.inf, "sample_size": n_samples, "r": np.nan, "U": np.nan})
         elif h0 == "<":
             u, p, r = _mann_whitney_u_test(x[k_idx], y[k_idx], alternative="greater")

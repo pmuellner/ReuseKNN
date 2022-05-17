@@ -4,18 +4,15 @@ pyximport.install(setup_args={"include_dirs": np.get_include()},
                   reload_support=True)
 from algorithms.knn_neighborhood import UserKNN
 import pandas as pd
-from surprise import Dataset, Reader, accuracy
+from surprise import Dataset, Reader
 from surprise.model_selection import KFold
-import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from collections import defaultdict
 import os
 import psutil
 import pickle as pl
-from sklearn.preprocessing import MinMaxScaler
-from scipy.stats import mannwhitneyu, norm, shapiro, ttest_ind
 import sys
-from algorithms import metrics, evaluation
+from algorithms import evaluation, utils
 
 def identify_user_groups(trainset, size_in_frac=0.2):
     """item_popularities = np.zeros(trainset.n_items)
@@ -54,29 +51,6 @@ def identify_user_groups(trainset, size_in_frac=0.2):
     med = set(trainset.all_users()).difference(low).difference(high)
 
     return low, med, high
-
-def dict3d_avg(listlistdict, K, n_folds):
-    avg = []
-    for k in range(len(K)):
-        avg_at_k = dict()
-        for f in range(n_folds):
-            for key, value in listlistdict[f][k].items():
-                avg_at_k[key] = avg_at_k.get(key, 0) + value
-        for key, value in avg_at_k.items():
-            avg_at_k[key] /= n_folds
-        avg.append(avg_at_k)
-    return avg
-
-def avg_over_q(data, n_folds, n_ks):
-    #print(data)
-    #n_folds = len(data)
-    #n_ks = len(data[0])
-    average = []
-    for k in range(n_ks):
-        min_queries = min([len(data[f][k]) for f in range(n_folds)])
-        average.append(np.mean([data[f][k][:min_queries] for f in range(n_folds)], axis=0))
-
-    return average
 
 
 def run(trainset, testset, K, configuration={}):
@@ -142,8 +116,11 @@ else:
     NAME = "ml-100k"
     PROTECTED = True
 
-NAME = "ml-100k"
-PROTECTED = False
+#NAME = "ml-1m"
+#PROTECTED = True
+
+NAME = "ciao"
+PROTECTED = True
 
 
 if NAME == "ml-100k":
@@ -174,22 +151,29 @@ if PROTECTED:
 else:
     PATH = "unprotected/" + NAME
 
+# TODO delete this
+#users = np.random.choice(data_df["user_id"], replace=False, size=1000)
+#data_df = data_df[data_df["user_id"].isin(users)]
+PATH += "_modified"
 print(PATH)
 
 dataset = Dataset.load_from_df(data_df, reader=reader)
 n_folds = 0
 folds = KFold(n_splits=5, random_state=42)
 
-K = [5, 10, 15, 20, 25, 30]
+#K = [5, 10, 15, 20, 25, 30]
 K_q_idx = 1
-#K = [5, 10, 20]
+K = [1, 10]
+privacy_risk = defaultdict(list)
 mean_absolute_error = defaultdict(list)
 recommendation_frequency = defaultdict(list)
 fraction_vulnerables = defaultdict(list)
 privacy_risk_dp = defaultdict(list)
 neighborhood_size_q = defaultdict(list)
 rating_overlap_q = defaultdict(list)
+privacy_risk_dp_secures = defaultdict(list)
 significance_test_results = defaultdict(list)
+significance_test_results_full = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1, kind="cosine")
@@ -225,10 +209,12 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["userknn"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["userknn"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["userknn"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["userknn"].append(userknn_results_samples["avg_privacy_risk"])
     del models, results
 
     # KNN + no protection
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "protected": False})
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [np.inf for _ in range(len(K))], "protected": False})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_no"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn_no"].append(results["recommendation_frequency"])
@@ -236,20 +222,25 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["userknn_no"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_no"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["userknn_no"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["userknn_no"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["userknn_no"].append(results_samples["avg_privacy_risk"])
     significance_test_results["userknn_no"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
     del models, results, results_samples
 
     # KNN + full protection
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [0 for _ in range(len(K))], "protected": True})
-    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    results, userknn_full_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_full"].append(results["mean_absolute_error"])
     recommendation_frequency["userknn_full"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_full"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_full"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_full"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["userknn_full"].append(results["avg_rating_overlap_q"])
-    significance_test_results["userknn_full"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
-    del models, results, results_samples
+    privacy_risk_dp_secures["userknn_full"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["userknn_full"].append(userknn_full_results_samples["avg_privacy_risk"])
+    significance_test_results["userknn_full"].append(evaluation.significance_tests(userknn_results_samples, userknn_full_results_samples))
+    significance_test_results_full["userknn"].append(evaluation.significance_tests(userknn_full_results_samples, userknn_results_samples))
+    del models, results
 
     # KNN + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
@@ -260,7 +251,10 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["userknn_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["userknn_reuse"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["userknn_reuse"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["userknn_reuse"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["userknn_reuse"].append(results_samples["avg_privacy_risk"])
     significance_test_results["userknn_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["userknn_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples
 
     # Popularity
@@ -272,7 +266,10 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["expect"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["expect"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["expect"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["expect"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["expect"].append(results_samples["avg_privacy_risk"])
     significance_test_results["expect"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["expect"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples
 
     # Popularity + reuse
@@ -284,7 +281,10 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["expect_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["expect_reuse"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["expect_reuse"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["expect_reuse"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["expect_reuse"].append(results_samples["avg_privacy_risk"])
     significance_test_results["expect_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["expect_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples
 
     # Gain
@@ -296,7 +296,10 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["gain"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["gain"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["gain"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["gain"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["gain"].append(results_samples["avg_privacy_risk"])
     significance_test_results["gain"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["gain"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples
 
     # Gain + reuse
@@ -308,7 +311,10 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp["gain_reuse"].append(results["avg_privacy_risk_dp"])
     neighborhood_size_q["gain_reuse"].append(results["avg_neighborhood_size_q"])
     rating_overlap_q["gain_reuse"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["gain_reuse"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["gain_reuse"].append(results_samples["avg_privacy_risk"])
     significance_test_results["gain_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["gain_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples
 
     del sim, gain, pop, overlap, rated_items
@@ -319,23 +325,34 @@ for trainset, testset in folds.split(dataset):
     n_folds += 1
     break
 
+#exit()
+
+f = open("results/" + PATH + "/privacy_risk_distribution.pkl", "wb")
+pl.dump(privacy_risk, f)
+f.close()
+
+
 f = open("results/" + PATH + "/significance_test_results.pkl", "wb")
 pl.dump(significance_test_results, f)
 f.close()
 
-avg_neighborhood_size_q_userknn = avg_over_q(neighborhood_size_q["userknn"], n_folds=n_folds, n_ks=1)
-avg_neighborhood_size_q_userknn_reuse = avg_over_q(neighborhood_size_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
-avg_neighborhood_size_q_expect = avg_over_q(neighborhood_size_q["expect"], n_folds=n_folds, n_ks=1)
-avg_neighborhood_size_q_expect_reuse = avg_over_q(neighborhood_size_q["expect_reuse"], n_folds=n_folds, n_ks=1)
-avg_neighborhood_size_q_gain = avg_over_q(neighborhood_size_q["gain"], n_folds=n_folds, n_ks=1)
-avg_neighborhood_size_q_gain_reuse = avg_over_q(neighborhood_size_q["gain_reuse"], n_folds=n_folds, n_ks=1)
+f = open("results/" + PATH + "/significance_test_results_full.pkl", "wb")
+pl.dump(significance_test_results_full, f)
+f.close()
 
-avg_rating_overlap_q_userknn = avg_over_q(rating_overlap_q["userknn"], n_folds=n_folds, n_ks=1)
-avg_rating_overlap_q_userknn_reuse = avg_over_q(rating_overlap_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
-avg_rating_overlap_q_expect = avg_over_q(rating_overlap_q["expect"], n_folds=n_folds, n_ks=1)
-avg_rating_overlap_q_expect_reuse = avg_over_q(rating_overlap_q["expect_reuse"], n_folds=n_folds, n_ks=1)
-avg_rating_overlap_q_gain = avg_over_q(rating_overlap_q["gain"], n_folds=n_folds, n_ks=1)
-avg_rating_overlap_q_gain_reuse = avg_over_q(rating_overlap_q["gain_reuse"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_userknn = utils.avg_over_q(neighborhood_size_q["userknn"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_userknn_reuse = utils.avg_over_q(neighborhood_size_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_expect = utils.avg_over_q(neighborhood_size_q["expect"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_expect_reuse = utils.avg_over_q(neighborhood_size_q["expect_reuse"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_gain = utils.avg_over_q(neighborhood_size_q["gain"], n_folds=n_folds, n_ks=1)
+avg_neighborhood_size_q_gain_reuse = utils.avg_over_q(neighborhood_size_q["gain_reuse"], n_folds=n_folds, n_ks=1)
+
+avg_rating_overlap_q_userknn = utils.avg_over_q(rating_overlap_q["userknn"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_userknn_reuse = utils.avg_over_q(rating_overlap_q["userknn_reuse"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_expect = utils.avg_over_q(rating_overlap_q["expect"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_expect_reuse = utils.avg_over_q(rating_overlap_q["expect_reuse"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_gain = utils.avg_over_q(rating_overlap_q["gain"], n_folds=n_folds, n_ks=1)
+avg_rating_overlap_q_gain_reuse = utils.avg_over_q(rating_overlap_q["gain_reuse"], n_folds=n_folds, n_ks=1)
 
 np.save("results/" + PATH + "/K.npy", K)
 np.save("results/" + PATH + "/thresholds.npy", np.mean(thresholds, axis=0))
@@ -372,6 +389,15 @@ np.save("results/" + PATH + "/privacy_risk_dp_expect_reuse.npy", np.mean(privacy
 np.save("results/" + PATH + "/privacy_risk_dp_gain.npy", np.mean(privacy_risk_dp["gain"], axis=0))
 np.save("results/" + PATH + "/privacy_risk_dp_gain_reuse.npy", np.mean(privacy_risk_dp["gain_reuse"], axis=0))
 
+np.save("results/" + PATH + "/privacy_risk_dp_secures_userknn_no.npy", np.mean(privacy_risk_dp_secures["userknn_no"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_userknn_full.npy", np.mean(privacy_risk_dp_secures["userknn_full"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_userknn.npy", np.mean(privacy_risk_dp_secures["userknn"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_userknn_reuse.npy", np.mean(privacy_risk_dp_secures["userknn_reuse"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_expect.npy", np.mean(privacy_risk_dp_secures["expect"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_expect_reuse.npy", np.mean(privacy_risk_dp_secures["expect_reuse"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_gain.npy", np.mean(privacy_risk_dp_secures["gain"], axis=0))
+np.save("results/" + PATH + "/privacy_risk_dp_secures_gain_reuse.npy", np.mean(privacy_risk_dp_secures["gain_reuse"], axis=0))
+
 np.save("results/" + PATH + "/fraction_vulnerables_userknn_no.npy", np.mean(fraction_vulnerables["userknn_no"], axis=0))
 np.save("results/" + PATH + "/fraction_vulnerables_userknn_full.npy", np.mean(fraction_vulnerables["userknn_full"], axis=0))
 np.save("results/" + PATH + "/fraction_vulnerables_userknn.npy", np.mean(fraction_vulnerables["userknn"], axis=0))
@@ -382,21 +408,21 @@ np.save("results/" + PATH + "/fraction_vulnerables_gain.npy", np.mean(fraction_v
 np.save("results/" + PATH + "/fraction_vulnerables_gain_reuse.npy", np.mean(fraction_vulnerables["gain_reuse"], axis=0))
 
 f = open("results/" + PATH + "/recommendation_frequency_userknn_no.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["userknn_no"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["userknn_no"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_userknn_full.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["userknn_full"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["userknn_full"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_userknn.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["userknn"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["userknn"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_userknn_reuse.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["userknn_reuse"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["userknn_reuse"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_expect.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["expect"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["expect"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_expect_reuse.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["expect_reuse"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["expect_reuse"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_gain.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["gain"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["gain"], n_folds=n_folds, K=K), f)
 f = open("results/" + PATH + "/recommendation_frequency_gain_reuse.pkl", "wb")
-pl.dump(dict3d_avg(recommendation_frequency["gain_reuse"], n_folds=n_folds, K=K), f)
+pl.dump(utils.dict3d_avg(recommendation_frequency["gain_reuse"], n_folds=n_folds, K=K), f)
 f.close()
 
 

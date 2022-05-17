@@ -37,9 +37,10 @@ class UserKNN:
         self.overlap = precomputed_overlap if precomputed_overlap is not None else None
         self.random_neighbors = random
         self.privacy_score = None
-        self.threshold = int(threshold)
+        self.threshold = threshold
         self.protected = protected
-        self.nr_noisy_ratings = 0
+        self.nr_noisy_ratings = []
+        self.avg_sims = []
         self.rated_items = None
 
     def fit(self, trainset):
@@ -201,13 +202,16 @@ class UserKNN:
         sum_rank = 0.0
         est = 0
         pr_unprotected = []
+        noisy = 0
+        avg_sim = np.mean([sim for sim, _, _, _ in k_neighbors])
         for (sim, rank, r, u_) in k_neighbors:
             self.privacy_risk[u_] += 1
 
             response = r
             if self.protected and self.privacy_risk[u_] > self.threshold:
-                self.nr_noisy_ratings += 1
+                #self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
+                noisy += 1
             else:
                 pr_unprotected.append(self.privacy_risk_dp[u_])
                 self.privacy_risk_dp[u_] += 1
@@ -218,13 +222,13 @@ class UserKNN:
                 actual_k += 1
                 sum_rank += rank
 
+        self.nr_noisy_ratings.append(noisy / len(k_neighbors))
+        self.avg_sims.append(avg_sim)
+
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
 
         est += sum_ratings / sum_sim
-
-        #for _, _, r, u_ in k_neighbors:
-        #    self.known_ratings[u].append((u_, i, r, est))
 
         details = {'actual_k': actual_k}
         return est, details
@@ -268,25 +272,13 @@ class UserKNN:
         for user_id, item_id, rating in testset:
             uid, iid, r, r_, details = self.predict(user_id, item_id,  rating, clip=False)
             self.predictions.append((uid, iid, r, r_, details))
-            #iuid = self.trainset.to_inner_uid(uid)
-            #self.absolute_errors[iuid].append(np.abs(r - r_))
-
             try:
                 iuid = self.trainset.to_inner_uid(uid)
             except ValueError:
                 iuid = 'UKN__' + str(uid)
             self.absolute_errors[iuid].append(np.abs(r - r_))
 
-        #self.absolute_errors = absolute_errors
-        #self.mae_u = {uid: np.mean(aes) for uid, aes in absolute_errors.items()}
-        #self.predictions = predictions
-
-        #self.exposure_u = {iuid: 0 for iuid in self.trainset.all_users()}
-        #for iuid, students in self.students.items():
-        #    self.exposure_u[iuid] = len(students)
-
-        #self.privacy_score = self._get_privacy_scores()
-        self.nr_noisy_ratings /= len(testset)
+        #self.nr_noisy_ratings /= len(testset)
 
         return self.predictions
 

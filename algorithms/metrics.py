@@ -1,5 +1,6 @@
 import numpy as np
 from collections import defaultdict
+from scipy.stats import rankdata, spearmanr
 
 
 def avg_neighborhood_size_q(model, n_queries):
@@ -88,17 +89,20 @@ def avg_neighborhood_size(model, users=None):
     return np.mean(sizes), sizes
 
 
-def _relevant_recommendations(model, threshold):
-    relevant_riids = defaultdict(list)
-    for ruid, riid, _, est, _ in model.predictions:
-        if est >= threshold:
-            relevant_riids[ruid].append(riid)
+def _top_recommendations(model, n):
+    top_n = defaultdict(list)
+    for uid, iid, true_r, est, _ in model.predictions:
+        top_n[uid].append((iid, est))
 
-    return relevant_riids
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        top_n[uid] = [iid for iid, _ in user_ratings[:n]]
+
+    return top_n
 
 
-def recommendation_frequency(model, threshold, users=None):
-    positive_recommendations = _relevant_recommendations(model, threshold=threshold)
+def recommendation_frequency(model, n, users=None):
+    positive_recommendations = _top_recommendations(model, n=n)
     if users:
         positive_recommendations = {ruid: positive_recommendations[ruid] for ruid in users}
 
@@ -109,75 +113,6 @@ def recommendation_frequency(model, threshold, users=None):
 
     return frequencies
 
-
-def avg_recommendation_popularity(model, threshold):
-    item_popularities = np.zeros(model.trainset.n_items)
-    for i, ratings in model.trainset.ir.items():
-        item_popularities[i] = float(len(ratings)) / model.trainset.n_users
-
-    positive_recommendations = _relevant_recommendations(model, threshold=threshold)
-    avg_popularities = []
-    for _, riids in positive_recommendations.items():
-        avg_popularity_u = np.mean([item_popularities[model.trainset.to_inner_iid(riid)] for riid in riids])
-        avg_popularities.append(avg_popularity_u)
-
-    return np.mean(avg_popularities)
-
-
-def gini_index(model, threshold):
-    """frequencies = recommendation_frequency(model, threshold)
-    n_lists = len(set([ruid for ruid, _, _, _, _ in model.predictions]))
-    n_items = model.trainset.n_items
-
-    print(n_lists, n_items, len(frequencies))
-
-    d = {k+1: float(freq) / n_lists for k, freq in enumerate(sorted(frequencies.values()))}
-
-    summation = 0.0
-    #for k in range(1, n_items+1):
-    for k, ratio in d.items():
-        summation += (2 * k - n_items - 1) * ratio
-    gini = 1 - (1. / (n_items - 1)) * summation
-
-    return gini"""
-
-    frequencies = recommendation_frequency(model, threshold)
-    #array = np.zeros((len(frequencies)))
-    array = np.zeros(model.trainset.n_items)
-    for idx, freq in enumerate(sorted(frequencies.values())):
-        array[idx] = freq
-
-    #print(len(frequencies))
-
-    array += 0.0000001  # values cannot be 0
-    array = np.sort(array)  # values must be sorted
-    index = np.arange(1, array.shape[0] + 1)  # index per array element
-    n = array.shape[0]  # number of array elements
-    return ((np.sum((2 * index - n - 1) * array)) / (n * np.sum(array)))  # Gini coefficient
-
-def gap(model, threshold):
-    positive_recommendations = _relevant_recommendations(model, threshold=threshold)
-
-    item_popularities = np.zeros(model.trainset.n_items)
-    for i, ratings in model.trainset.ir.items():
-        item_popularities[i] = float(len(ratings)) / model.trainset.n_users
-
-    gap_r = np.zeros(model.trainset.n_users)
-    for ruid, riids in positive_recommendations.items():
-        avg_item_popularity = []
-        for riid in riids:
-            iiid = model.trainset.to_inner_iid(riid)
-            avg_item_popularity.append(item_popularities[iiid])
-        avg_item_popularity = np.mean(avg_item_popularity)
-        iuid = model.trainset.to_inner_uid(ruid)
-        gap_r[iuid] = avg_item_popularity
-
-    gap_p = np.zeros(model.trainset.n_users)
-    for iuid, ratings in model.trainset.ur.items():
-        avg_user_popularity = np.mean([item_popularities[iiid] for iiid, _ in ratings])
-        gap_p[iuid] = avg_user_popularity
-
-    return np.mean((gap_r - gap_p) / gap_p)
 
 def fraction_vulnerables(model, users=None):
     if users:
@@ -203,7 +138,7 @@ def avg_privacy_risk_dp(model, users=None):
         for ruid in users:
             iuid = model.trainset.to_inner_uid(ruid)
             privacy_risk_dp.append(model.privacy_risk_dp[iuid])
-        return np.mean(privacy_risk_dp)
+        return np.mean(privacy_risk_dp), privacy_risk_dp
     else:
         return np.mean(model.privacy_risk_dp), model.privacy_risk_dp
 
