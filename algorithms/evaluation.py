@@ -15,6 +15,15 @@ def evaluate(models, models_q):
     results, results_samples = _evaluate(models)
     results_q, results_q_samples = _evaluate_q(models_q)
 
+    frac_impossible = []
+    for m in models:
+        impossible_recommendations = 0
+        for _, _, _, _, details in m.predictions:
+            if details["was_impossible"]:
+                impossible_recommendations += 1
+        n_recommendations = len(m.predictions)
+        frac_impossible.append(impossible_recommendations / n_recommendations)
+    print(frac_impossible)
     print([np.mean(m.nr_noisy_ratings) for m in models])
     avg = []
     for m in models:

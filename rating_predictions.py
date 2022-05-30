@@ -119,7 +119,7 @@ else:
 #NAME = "ml-1m"
 #PROTECTED = True
 
-NAME = "ciao"
+NAME = "douban"
 PROTECTED = True
 
 
@@ -162,8 +162,10 @@ n_folds = 0
 folds = KFold(n_splits=5, random_state=42)
 
 #K = [5, 10, 15, 20, 25, 30]
-K_q_idx = 1
-K = [1, 10]
+#K_q_idx = 1
+#K = [1, 10]
+K_q_idx = 0
+K = [10]
 privacy_risk = defaultdict(list)
 mean_absolute_error = defaultdict(list)
 recommendation_frequency = defaultdict(list)
