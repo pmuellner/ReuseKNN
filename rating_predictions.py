@@ -14,68 +14,21 @@ import pickle as pl
 import sys
 from algorithms import evaluation, utils
 
-def identify_user_groups(trainset, size_in_frac=0.2):
-    """item_popularities = np.zeros(trainset.n_items)
-    for iid, ratings in trainset.ir.items():
-        item_popularities[iid] = float(len(ratings)) / trainset.n_users
-
-    user_popularities = np.zeros(trainset.n_items)
-    for uid, ratings in trainset.ur.items():
-        user_popularities[uid] = np.mean([item_popularities[iid] for iid, _ in ratings])
-
-    n = np.round(trainset.n_users * size_in_frac).astype(int)
-    sorted_users = np.argsort(user_popularities)
-    low = sorted_users[:n]
-    high = sorted_users[-n:]
-    med = np.argsort(user_popularities - np.median(user_popularities))[:n]"""
-
-    # user groups as in "The Unfairness of Popularity Bias in Recommendation" (Abdollahpouri, Mansoury, Burke, Mobasher)
-    item_popularities = np.zeros(trainset.n_items)
-    for iid, ratings in trainset.ir.items():
-        item_popularities[iid] = float(len(ratings)) / trainset.n_users
-
-    n = np.round(trainset.n_items * 0.2).astype(int)
-    popular_items = np.argsort(item_popularities)[-n:]
-    user_popularities = np.zeros(trainset.n_users)
-    for uid, ratings in trainset.ur.items():
-        n_popular_items = 0
-        for iid, _ in ratings:
-            if iid in popular_items:
-                n_popular_items += 1
-        user_popularities[uid] = n_popular_items / len(ratings)
-
-    n = np.round(trainset.n_users * size_in_frac).astype(int)
-    sorted_users = np.argsort(user_popularities)
-    low = sorted_users[:n]
-    high = sorted_users[-n:]
-    med = set(trainset.all_users()).difference(low).difference(high)
-
-    return low, med, high
-
-
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
     sim = configuration.get("precomputed_sim", None)
-    act = configuration.get("preocmputed_act", None)
     pop = configuration.get("precomputed_pop", None)
-    rr = configuration.get("precomputed_rr", None)
     gain = configuration.get("precomputed_gain", None)
     overlap = configuration.get("precomputed_overlap", None)
     rated_items = configuration.get("rated_items", None)
-    tau_1 = configuration.get("tau_1", 0) #activity
     tau_2 = configuration.get("tau_2", 0) #expect
-    tau_3 = configuration.get("tau_3", 0) #rr expect
     tau_4 = configuration.get("tau_4", 0) #gain
-    tau_5 = configuration.get("tau_5", 0) #rr pop
-    tau_6 = configuration.get("tau_6", 0) #pop
 
     thresholds = configuration.get("thresholds", None)
     protected = configuration.get("protected", False)
 
-    config_str = str({"reuse": reuse, "tau_1": tau_1, "tau_2": tau_2, "tau_3": tau_3, "tau_4": tau_4, "tau_5": tau_5, "tau_6": tau_6,
-                      "precomputed_sim": sim is not None, "precomputed_act": act is not None,
-                      "precomputed_pop": pop is not None, "precomputed_rr": rr is not None,
-                      "precomputed_gain": gain is not None, "protected": protected,
+    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "precomputed_sim": sim is not None,
+                      "precomputed_pop": pop is not None, "precomputed_gain": gain is not None, "protected": protected,
                       "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None})
 
     t0 = dt.now()
@@ -86,8 +39,8 @@ def run(trainset, testset, K, configuration={}):
             th = thresholds[idx]
         else:
             th = 0
-        model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_act=act, precomputed_pop=pop,
-                        precomputed_rr=rr, precomputed_gain=gain, tau_1=tau_1, tau_2=tau_2, tau_3=tau_3, tau_4=tau_4, tau_5=tau_5, tau_6=tau_6,
+        model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_pop=pop,
+                        precomputed_gain=gain, tau_2=tau_2, tau_4=tau_4,
                         threshold=th, protected=protected, precomputed_overlap=overlap, rated_items=rated_items)
         model.fit(trainset)
         predictions = model.test(testset)
@@ -115,12 +68,6 @@ if len(sys.argv) == 3:
 else:
     NAME = "ml-100k"
     PROTECTED = True
-
-#NAME = "ml-1m"
-#PROTECTED = True
-
-NAME = "douban"
-PROTECTED = True
 
 
 if NAME == "ml-100k":
@@ -151,21 +98,14 @@ if PROTECTED:
 else:
     PATH = "unprotected/" + NAME
 
-# TODO delete this
-#users = np.random.choice(data_df["user_id"], replace=False, size=1000)
-#data_df = data_df[data_df["user_id"].isin(users)]
-PATH += "_modified"
 print(PATH)
 
 dataset = Dataset.load_from_df(data_df, reader=reader)
 n_folds = 0
 folds = KFold(n_splits=5, random_state=42)
 
-#K = [5, 10, 15, 20, 25, 30]
-#K_q_idx = 1
-#K = [1, 10]
-K_q_idx = 0
-K = [10]
+K = [5, 10, 15, 20, 25, 30]
+K_q_idx = 1
 privacy_risk = defaultdict(list)
 mean_absolute_error = defaultdict(list)
 recommendation_frequency = defaultdict(list)
@@ -179,14 +119,10 @@ significance_test_results_full = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1, kind="cosine")
-    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="adjusted_cosine")
-    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="pearson")
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
     overlap = UserKNN.compute_overlap(trainset)
     rated_items = UserKNN.compute_rated_items(trainset)
-
-    low, med, high = identify_user_groups(trainset)
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()

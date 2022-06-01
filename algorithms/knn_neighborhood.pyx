@@ -13,8 +13,8 @@ class PredictionImpossible(Exception):
     pass
 
 class UserKNN:
-    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_1=0, tau_2=0, tau_3=0, tau_4=0, tau_5=0, tau_6=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_act=None, precomputed_rr=None, precomputed_gain=None, precomputed_overlap=None, threshold=0, rated_items=None, protected=False):
+    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_2=0, tau_4=0, precomputed_sim=None,
+                 precomputed_pop=None, precomputed_gain=None, precomputed_overlap=None, threshold=0, rated_items=None, protected=False):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -23,16 +23,10 @@ class UserKNN:
         self.accuracy_at_q = defaultdict(list)
         self.rating_overlap_at_q = defaultdict(list)
         self.reuse_neighbors = reuse
-        self.tau_1 = tau_1
         self.tau_2 = tau_2
-        self.tau_3 = tau_3
         self.tau_4 = tau_4
-        self.tau_5 = tau_5
-        self.tau_6 = tau_6
         self.sim = precomputed_sim if precomputed_sim is not None else None
         self.pop = precomputed_pop if precomputed_pop is not None else None
-        self.act = precomputed_act if precomputed_act is not None else None
-        self.rr = precomputed_rr if precomputed_rr is not None else None
         self.gain = precomputed_gain if precomputed_gain is not None else None
         self.overlap = precomputed_overlap if precomputed_overlap is not None else None
         self.random_neighbors = random
@@ -58,23 +52,13 @@ class UserKNN:
         if self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
 
-        if self.act is None and self.tau_1 > 0:
-            self.act = self.compute_activities(self.trainset)
-
         if self.pop is None and self.tau_2 > 0:
             self.pop = self.compute_popularities(self.trainset)
 
-        if self.rr is None and self.tau_3 > 0:
-            self.rr = self.compute_rr(self.trainset)
 
         if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
 
-        self.rr_expect = self.compute_rr_expect(self.trainset)
-        self.rr_pop = self.compute_rr_pop(self.trainset)
-        self.pop_new = self.compute_pop(self.trainset)
-
-        #self.ranking = dict()
         self.privacy_risk = np.zeros((self.trainset.n_users))
         self.privacy_risk_dp = np.zeros((self.trainset.n_users))
 
@@ -85,30 +69,15 @@ class UserKNN:
                 simrank = rankdata(self.sim[u, :], method="max")
             if self.pop is not None:
                 poprank = rankdata(self.pop, method="max")
-            if self.act is not None:
-                actrank = rankdata(self.act, method="max")
-            if self.rr is not None:
-                rrrank = rankdata(self.rr, method="max")
             if self.gain is not None:
                 gainrank = rankdata(self.gain[u, :], method="max")
-            if self.rr_expect is not None:
-                rr_expect_rank = rankdata(self.rr_expect, method="max")
-            if self.rr_pop is not None:
-                rr_pop_rank = rankdata(self.rr_pop, method="max")
-            if self.pop_new is not None:
-                pop_new_rank = rankdata(self.pop_new, method="max")
 
-
-            if self.act is not None:
-                self.ranking[u] += self.tau_1 * actrank
             if self.pop is not None:
                  self.ranking[u] += self.tau_2 * poprank
-            if self.rr is not None:
-                 self.ranking[u] += self.tau_3 * rrrank
             if self.gain is not None:
                  self.ranking[u] += self.tau_4 * gainrank
             if self.sim is not None:
-                 self.ranking[u] += (1.0 - self.tau_1 - self.tau_2 - self.tau_3 - self.tau_4) * simrank
+                 self.ranking[u] += (1.0 - self.tau_2 - self.tau_4) * simrank
 
         return self
 
@@ -136,7 +105,6 @@ class UserKNN:
                     r_random = np.random.uniform(min_rating, max_rating)
                     return r_random
 
-        #possible_mentors_old = set(u_ for u_, _ in self.trainset.ir[i])
         modified_ir = self.trainset.ir[i]
         possible_mentors = set(u_ for u_, _ in modified_ir)
 
@@ -149,8 +117,6 @@ class UserKNN:
         if self.random_neighbors:
             mentors = np.random.choice(list(possible_mentors), replace=False, size=min(self.k, len(possible_mentors)))
             self.mentors[u] = self.mentors[u].union(set(mentors))
-            #for m in mentors:
-            #    self.students[m] = self.students[m].union({u})
             neighbors = [(s, rank, r, u_) for u_, s, rank, r in possible_mentors_data if u_ in mentors]
             k_neighbors = heapq.nlargest(self.k, neighbors, key=lambda t: t[0])
 
@@ -165,7 +131,6 @@ class UserKNN:
                 elif u_ not in already_mentors:
                     new_mentors.append(u_)
                     self.mentors[u] = self.mentors[u].union({u_})
-                    #self.students[u_] = self.students[u_].union({u})
             new_mentors = set(new_mentors)
 
             mentors = new_mentors.union(already_mentors)
@@ -174,26 +139,12 @@ class UserKNN:
         else:
             k_neighbors = heapq.nlargest(self.k, possible_mentors_data, key=lambda t: t[2])
             self.mentors[u] = self.mentors[u].union(set(u_ for u_, _, _, _  in k_neighbors))
-            #for u_, _, _, _ in k_neighbors:
-            #    self.students[u_] = self.students[u_].union({u})
             k_neighbors = [(s, rank, r, u_) for u_, s, rank, r in k_neighbors]
 
         n_mentors = len(self.mentors[u])
         self.n_mentors_at_q[u].append(n_mentors)
 
         neighborhood = list(self.mentors[u])
-        """items_in_neighborhood = set()
-        n_item_ratings = dict()
-        for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
-            if len(items_in_neighborhood) < self.trainset.n_items:
-                items_in_neighborhood.update(self.rated_items[neighbor])
-            for iid in self.rated_items[neighbor]:
-                n_item_ratings[iid] = n_item_ratings.get(iid, 0) + 1
-        for iid in items_in_neighborhood.copy():
-            if n_item_ratings[iid] < self.k:
-                items_in_neighborhood.remove(iid)
-        self.item_coverage_at_q[u].append(len(items_in_neighborhood))"""
-
         avg_overlap = np.mean(self.overlap[u, neighborhood])
         self.rating_overlap_at_q[u].append(avg_overlap)
 
@@ -209,9 +160,7 @@ class UserKNN:
 
             response = r
             if self.protected and self.privacy_risk[u_] > self.threshold:
-                #self.nr_noisy_ratings += 1
                 response = deniable_answer(self, u_, i)
-                noisy += 1
             else:
                 pr_unprotected.append(self.privacy_risk_dp[u_])
                 self.privacy_risk_dp[u_] += 1
@@ -221,9 +170,6 @@ class UserKNN:
                 sum_ratings += sim * response
                 actual_k += 1
                 sum_rank += rank
-
-        self.nr_noisy_ratings.append(noisy / len(k_neighbors))
-        self.avg_sims.append(avg_sim)
 
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
@@ -277,8 +223,6 @@ class UserKNN:
             except ValueError:
                 iuid = 'UKN__' + str(uid)
             self.absolute_errors[iuid].append(np.abs(r - r_))
-
-        #self.nr_noisy_ratings /= len(testset)
 
         return self.predictions
 
@@ -502,14 +446,6 @@ class UserKNN:
         return sim
 
     @staticmethod
-    def compute_activities(trainset):
-        n_ratings = np.zeros(trainset.n_users)
-        for u, ratings in trainset.ur.items():
-            n_ratings[u] = len(ratings)
-
-        return n_ratings
-
-    @staticmethod
     def compute_popularities(trainset):
         item_popularities = np.zeros(trainset.n_items)
         for i, ratings in trainset.ir.items():
@@ -523,71 +459,6 @@ class UserKNN:
             #reuse_potential[u] = acc_rp / (trainset.n_ratings / trainset.n_users)
             reuse_potential[u] = acc_rp
         return reuse_potential
-
-    @staticmethod
-    def compute_rr_expect(trainset):
-        item_popularities = np.zeros(trainset.n_items)
-        for i, ratings in trainset.ir.items():
-            item_popularities[i] = float(len(ratings)) / trainset.n_users
-
-        rr = np.zeros(trainset.n_users)
-        for u, ratings in trainset.ur.items():
-            acc_rp = 0.0
-            for i, _ in ratings:
-                acc_rp += item_popularities[i]
-            rr[u] = 1 / acc_rp
-        return rr
-
-    @staticmethod
-    def compute_rr_pop(trainset):
-        item_popularities = np.zeros(trainset.n_items)
-        for i, ratings in trainset.ir.items():
-            item_popularities[i] = float(len(ratings)) / trainset.n_users
-
-        rr = np.zeros(trainset.n_users)
-        for uid, ratings in trainset.ur.items():
-            rr[uid] = 1 / np.mean([item_popularities[iid] for iid, r in ratings])
-        return rr
-
-    @staticmethod
-    def compute_pop(trainset):
-        item_popularities = np.zeros(trainset.n_items)
-        for i, ratings in trainset.ir.items():
-            item_popularities[i] = float(len(ratings)) / trainset.n_users
-
-        rr = np.zeros(trainset.n_users)
-        for uid, ratings in trainset.ur.items():
-            rr[uid] = np.mean([item_popularities[iid] for iid, r in ratings])
-        return rr
-
-    @staticmethod
-    def compute_rr(trainset, function=None):
-        item_popularities = np.zeros(trainset.n_items)
-        for i, ratings in trainset.ir.items():
-            item_popularities[i] = float(len(ratings)) / trainset.n_users
-
-        """item_ranks = {v: k+1 for k, v in dict(enumerate(np.argsort(item_popularities)[::-1])).items()}
-
-        rr = np.zeros(trainset.n_users)
-        for u, ratings in trainset.ur.items():
-            rr_u = 0.0
-            for i, _ in ratings:
-                rr_u += f(item_ranks[i])
-            rr[u] = rr_u"""
-
-        rr = np.zeros(trainset.n_users)
-        if function == "expectation":
-            for u, ratings in trainset.ur.items():
-                acc_rp = 0.0
-                for i, _ in ratings:
-                    acc_rp += item_popularities[i]
-                rr[u] = 1 / acc_rp
-        if function == "popularity":
-            rr = np.zeros(trainset.n_users)
-            for uid, ratings in trainset.ur.items():
-                rr[uid] = 1 / np.mean([item_popularities[iid] for iid, r in ratings])
-
-        return rr
 
 
     @staticmethod
@@ -628,19 +499,3 @@ class UserKNN:
             if self.protected and q >= self.threshold:
                 protected_neighbors.add(uid)
         return protected_neighbors
-
-    def  _get_privacy_scores(self):
-        item_popularity = {iid: len(ratings) / self.trainset.n_users for iid, ratings in self.trainset.ir.items()}
-        privacy_score = {iuid: 0 for iuid in self.trainset.all_users()}
-        privacy_score_pairwise = np.zeros((self.trainset.n_users, self.trainset.n_users))
-        for alice, secrets in self.known_secrets.items():
-            sensitivity = dict()
-            for bob, iid in secrets:
-                sensitivity_i = np.log(1 / item_popularity[iid])
-                sensitivity[bob] = sensitivity.get(bob, 0) + sensitivity_i
-
-            for bob, s in sensitivity.items():
-                privacy_score[bob] = privacy_score.get(bob, 0) + s
-                privacy_score_pairwise[alice, bob] = s
-
-        return privacy_score
