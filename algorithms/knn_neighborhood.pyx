@@ -182,18 +182,6 @@ class UserKNN:
         self.n_mentors_at_q[u].append(n_mentors)
 
         neighborhood = list(self.mentors[u])
-        """items_in_neighborhood = set()
-        n_item_ratings = dict()
-        for neighbor, _ in sorted(zip(neighborhood, self.n_ratings[neighborhood]), key=lambda t: t[1], reverse=True):
-            if len(items_in_neighborhood) < self.trainset.n_items:
-                items_in_neighborhood.update(self.rated_items[neighbor])
-            for iid in self.rated_items[neighbor]:
-                n_item_ratings[iid] = n_item_ratings.get(iid, 0) + 1
-        for iid in items_in_neighborhood.copy():
-            if n_item_ratings[iid] < self.k:
-                items_in_neighborhood.remove(iid)
-        self.item_coverage_at_q[u].append(len(items_in_neighborhood))"""
-
         avg_overlap = np.mean(self.overlap[u, neighborhood])
         self.rating_overlap_at_q[u].append(avg_overlap)
 
@@ -277,8 +265,6 @@ class UserKNN:
             except ValueError:
                 iuid = 'UKN__' + str(uid)
             self.absolute_errors[iuid].append(np.abs(r - r_))
-
-        #self.nr_noisy_ratings /= len(testset)
 
         return self.predictions
 

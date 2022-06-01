@@ -14,45 +14,6 @@ import pickle as pl
 import sys
 from algorithms import evaluation, utils
 
-def identify_user_groups(trainset, size_in_frac=0.2):
-    """item_popularities = np.zeros(trainset.n_items)
-    for iid, ratings in trainset.ir.items():
-        item_popularities[iid] = float(len(ratings)) / trainset.n_users
-
-    user_popularities = np.zeros(trainset.n_items)
-    for uid, ratings in trainset.ur.items():
-        user_popularities[uid] = np.mean([item_popularities[iid] for iid, _ in ratings])
-
-    n = np.round(trainset.n_users * size_in_frac).astype(int)
-    sorted_users = np.argsort(user_popularities)
-    low = sorted_users[:n]
-    high = sorted_users[-n:]
-    med = np.argsort(user_popularities - np.median(user_popularities))[:n]"""
-
-    # user groups as in "The Unfairness of Popularity Bias in Recommendation" (Abdollahpouri, Mansoury, Burke, Mobasher)
-    item_popularities = np.zeros(trainset.n_items)
-    for iid, ratings in trainset.ir.items():
-        item_popularities[iid] = float(len(ratings)) / trainset.n_users
-
-    n = np.round(trainset.n_items * 0.2).astype(int)
-    popular_items = np.argsort(item_popularities)[-n:]
-    user_popularities = np.zeros(trainset.n_users)
-    for uid, ratings in trainset.ur.items():
-        n_popular_items = 0
-        for iid, _ in ratings:
-            if iid in popular_items:
-                n_popular_items += 1
-        user_popularities[uid] = n_popular_items / len(ratings)
-
-    n = np.round(trainset.n_users * size_in_frac).astype(int)
-    sorted_users = np.argsort(user_popularities)
-    low = sorted_users[:n]
-    high = sorted_users[-n:]
-    med = set(trainset.all_users()).difference(low).difference(high)
-
-    return low, med, high
-
-
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
     sim = configuration.get("precomputed_sim", None)
@@ -116,12 +77,6 @@ else:
     NAME = "ml-100k"
     PROTECTED = True
 
-#NAME = "ml-1m"
-#PROTECTED = True
-
-NAME = "douban"
-PROTECTED = True
-
 
 if NAME == "ml-100k":
     data_df = pd.read_csv("data/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
@@ -151,21 +106,14 @@ if PROTECTED:
 else:
     PATH = "unprotected/" + NAME
 
-# TODO delete this
-#users = np.random.choice(data_df["user_id"], replace=False, size=1000)
-#data_df = data_df[data_df["user_id"].isin(users)]
-PATH += "_modified"
 print(PATH)
 
 dataset = Dataset.load_from_df(data_df, reader=reader)
 n_folds = 0
 folds = KFold(n_splits=5, random_state=42)
 
-#K = [5, 10, 15, 20, 25, 30]
-#K_q_idx = 1
-#K = [1, 10]
-K_q_idx = 0
-K = [10]
+K = [5, 10, 15, 20, 25, 30]
+K_q_idx = 1
 privacy_risk = defaultdict(list)
 mean_absolute_error = defaultdict(list)
 recommendation_frequency = defaultdict(list)
@@ -179,8 +127,6 @@ significance_test_results_full = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
     sim = UserKNN.compute_similarities(trainset, min_support=1, kind="cosine")
-    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="adjusted_cosine")
-    #sim = UserKNN.compute_similarities(trainset, min_support=1, kind="pearson")
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
     overlap = UserKNN.compute_overlap(trainset)
