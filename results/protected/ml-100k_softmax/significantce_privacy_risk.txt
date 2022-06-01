@@ -1,0 +1,980 @@
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 171726.000000 (U), 0.001360 (p), -0.085262 (r)
+[one-tailed MWU] Popularity k=5: 33816.500000 (U), 0.000000 (p), -0.731494 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 36690.500000 (U), 0.000000 (p), -0.718495 (r)
+[one-tailed MWU] Gain k=10: 54878.500000 (U), 0.000000 (p), -0.651607 (r)
+[one-tailed MWU] Gain+Reuse k=5: 59490.000000 (U), 0.000000 (p), -0.630022 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 42567.000000 (U), 0.005817 (p), -0.099886 (r)
+[one-tailed MWU] Popularity k=10: 10608.000000 (U), 0.000000 (p), -0.666079 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 12004.000000 (U), 0.000000 (p), -0.656434 (r)
+[one-tailed MWU] Gain k=10: 17059.000000 (U), 0.000000 (p), -0.609463 (r)
+[one-tailed MWU] Gain+Reuse k=10: 15569.000000 (U), 0.000000 (p), -0.622826 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 10215.500000 (U), 0.001952 (p), -0.155588 (r)
+[one-tailed MWU] Popularity k=15: 3747.500000 (U), 0.000000 (p), -0.539603 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3912.000000 (U), 0.000000 (p), -0.545274 (r)
+[one-tailed MWU] Gain k=10: 5223.000000 (U), 0.000000 (p), -0.522102 (r)
+[one-tailed MWU] Gain+Reuse k=15: 5108.000000 (U), 0.000000 (p), -0.528481 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2450.000000 (U), 0.000078 (p), -0.267468 (r)
+[one-tailed MWU] Popularity k=20: 1412.500000 (U), 0.000000 (p), -0.426211 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1405.500000 (U), 0.000000 (p), -0.438045 (r)
+[one-tailed MWU] Gain k=10: 1719.000000 (U), 0.000000 (p), -0.431079 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1721.000000 (U), 0.000000 (p), -0.437310 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 534.000000 (U), 0.036658 (p), -0.167271 (r)
+[one-tailed MWU] Popularity k=25: 426.500000 (U), 0.000000 (p), -0.251896 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 266.500000 (U), 0.000000 (p), -0.275321 (r)
+[one-tailed MWU] Gain k=10: 508.000000 (U), 0.000000 (p), -0.258023 (r)
+[one-tailed MWU] Gain+Reuse k=25: 468.500000 (U), 0.000000 (p), -0.266700 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 92.500000 (U), 0.463736 (p), -0.012963 (r)
+[one-tailed MWU] Popularity k=30: 55.500000 (U), 0.002932 (p), -0.125568 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 58.500000 (U), 0.003271 (p), -0.129430 (r)
+[one-tailed MWU] Gain k=10: 91.500000 (U), 0.005557 (p), -0.125049 (r)
+[one-tailed MWU] Gain+Reuse k=30: 99.000000 (U), 0.006904 (p), -0.126100 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 55248.000000 (U), 0.113060 (p), 0.047483 (r)
+[one-tailed MWU] Popularity k=5: 39363.500000 (U), 0.000000 (p), 0.342823 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 45162.500000 (U), 0.000000 (p), 0.363023 (r)
+[one-tailed MWU] Gain k=5: 42104.000000 (U), 0.000000 (p), 0.352439 (r)
+[one-tailed MWU] Gain+Reuse k=5: 47023.000000 (U), 0.000000 (p), 0.366982 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 199695.500000 (U), 0.114740 (p), 0.034018 (r)
+[one-tailed MWU] Popularity k=10: 118524.000000 (U), 0.000000 (p), 0.337875 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 132972.500000 (U), 0.000000 (p), 0.318759 (r)
+[one-tailed MWU] Gain k=10: 126999.500000 (U), 0.000000 (p), 0.241011 (r)
+[one-tailed MWU] Gain+Reuse k=10: 141273.000000 (U), 0.000000 (p), 0.237831 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 284962.000000 (U), 0.877934 (p), -0.029659 (r)
+[one-tailed MWU] Popularity k=15: 169981.000000 (U), 0.000000 (p), 0.268109 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 192201.000000 (U), 0.000000 (p), 0.259125 (r)
+[one-tailed MWU] Gain k=15: 185677.500000 (U), 0.000000 (p), 0.175368 (r)
+[one-tailed MWU] Gain+Reuse k=15: 204660.500000 (U), 0.000000 (p), 0.191157 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 325422.000000 (U), 0.997989 (p), -0.070053 (r)
+[one-tailed MWU] Popularity k=20: 202807.500000 (U), 0.000000 (p), 0.203574 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 228337.000000 (U), 0.000000 (p), 0.200000 (r)
+[one-tailed MWU] Gain k=20: 222005.500000 (U), 0.000002 (p), 0.127836 (r)
+[one-tailed MWU] Gain+Reuse k=20: 242537.000000 (U), 0.000000 (p), 0.151510 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 355399.500000 (U), 0.999560 (p), -0.079044 (r)
+[one-tailed MWU] Popularity k=25: 230799.500000 (U), 0.000000 (p), 0.174757 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 257123.500000 (U), 0.000000 (p), 0.154498 (r)
+[one-tailed MWU] Gain k=25: 251380.000000 (U), 0.000087 (p), 0.099958 (r)
+[one-tailed MWU] Gain+Reuse k=25: 272105.500000 (U), 0.000002 (p), 0.120492 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 366483.000000 (U), 0.999985 (p), -0.097702 (r)
+[one-tailed MWU] Popularity k=30: 248467.000000 (U), 0.000011 (p), 0.113484 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 274904.000000 (U), 0.000000 (p), 0.132480 (r)
+[one-tailed MWU] Gain k=30: 269436.000000 (U), 0.007922 (p), 0.062860 (r)
+[one-tailed MWU] Gain+Reuse k=30: 289243.000000 (U), 0.001522 (p), 0.076409 (r)
+Mb: 307.4609375
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 308.234375
+Mb: 310.60546875
+Mb: 316.1484375
+Mb: 324.68359375
+Mb: 334.67578125
+Mb: 344.74609375
+Training finished after 0:00:36.721130
+Mb: 344.74609375
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 306.1484375
+Mb: 309.82421875
+Mb: 316.75
+Mb: 325.21484375
+Mb: 334.62109375
+Mb: 350.40625
+Training finished after 0:01:12.915422
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 313.17578125
+Mb: 316.828125
+Mb: 323.73046875
+Mb: 332.37890625
+Mb: 341.7265625
+Mb: 356.671875
+Training finished after 0:00:40.001829
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 320.58984375
+Mb: 323.55078125
+Mb: 330.37109375
+Mb: 338.83203125
+Mb: 348.27734375
+Mb: 362.73046875
+Training finished after 0:01:18.047001
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 326.24609375
+Mb: 326.63671875
+Mb: 330.69140625
+Mb: 336.42578125
+Mb: 342.16796875
+Mb: 353.609375
+Training finished after 0:01:14.137416
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 334.48828125
+Mb: 335.0703125
+Mb: 337.55078125
+Mb: 342.41015625
+Mb: 347.93359375
+Mb: 359.05859375
+Training finished after 0:01:31.553675
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 338.94921875
+Mb: 339.8515625
+Mb: 341.140625
+Mb: 344.9765625
+Mb: 350.11328125
+Mb: 359.484375
+Training finished after 0:01:30.099160
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 153648.000000 (U), 0.009975 (p), -0.068387 (r)
+[one-tailed MWU] Popularity k=5: 30451.500000 (U), 0.000000 (p), -0.728677 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 35361.000000 (U), 0.000000 (p), -0.706855 (r)
+[one-tailed MWU] Gain k=10: 52726.500000 (U), 0.000000 (p), -0.638538 (r)
+[one-tailed MWU] Gain+Reuse k=5: 56800.500000 (U), 0.000000 (p), -0.616791 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 38660.500000 (U), 0.000154 (p), -0.144311 (r)
+[one-tailed MWU] Popularity k=10: 9259.500000 (U), 0.000000 (p), -0.677013 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 12161.500000 (U), 0.000000 (p), -0.653847 (r)
+[one-tailed MWU] Gain k=10: 16143.000000 (U), 0.000000 (p), -0.616884 (r)
+[one-tailed MWU] Gain+Reuse k=10: 14992.500000 (U), 0.000000 (p), -0.627337 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 9297.500000 (U), 0.006049 (p), -0.137928 (r)
+[one-tailed MWU] Popularity k=15: 3269.000000 (U), 0.000000 (p), -0.521506 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3849.500000 (U), 0.000000 (p), -0.517948 (r)
+[one-tailed MWU] Gain k=10: 4190.500000 (U), 0.000000 (p), -0.515266 (r)
+[one-tailed MWU] Gain+Reuse k=15: 4301.000000 (U), 0.000000 (p), -0.516337 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2441.500000 (U), 0.007642 (p), -0.174651 (r)
+[one-tailed MWU] Popularity k=20: 1291.000000 (U), 0.000000 (p), -0.392860 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 961.000000 (U), 0.000000 (p), -0.417742 (r)
+[one-tailed MWU] Gain k=10: 1799.500000 (U), 0.000000 (p), -0.385816 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1907.000000 (U), 0.000000 (p), -0.386264 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 758.000000 (U), 0.221628 (p), -0.070902 (r)
+[one-tailed MWU] Popularity k=25: 353.500000 (U), 0.000000 (p), -0.277126 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 481.000000 (U), 0.000000 (p), -0.275708 (r)
+[one-tailed MWU] Gain k=10: 581.500000 (U), 0.000000 (p), -0.273234 (r)
+[one-tailed MWU] Gain+Reuse k=25: 548.500000 (U), 0.000000 (p), -0.282007 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 78.000000 (U), 0.005056 (p), -0.325139 (r)
+[one-tailed MWU] Popularity k=30: 49.500000 (U), 0.000005 (p), -0.199502 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 67.000000 (U), 0.000007 (p), -0.204848 (r)
+[one-tailed MWU] Gain k=10: 118.500000 (U), 0.000016 (p), -0.205078 (r)
+[one-tailed MWU] Gain+Reuse k=30: 111.000000 (U), 0.000017 (p), -0.213045 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 68879.000000 (U), 0.114643 (p), 0.044561 (r)
+[one-tailed MWU] Popularity k=5: 48525.000000 (U), 0.000000 (p), 0.422030 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 53496.500000 (U), 0.000000 (p), 0.398405 (r)
+[one-tailed MWU] Gain k=5: 49367.000000 (U), 0.000000 (p), 0.407758 (r)
+[one-tailed MWU] Gain+Reuse k=5: 54305.000000 (U), 0.000000 (p), 0.373062 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 200214.500000 (U), 0.284598 (p), 0.016032 (r)
+[one-tailed MWU] Popularity k=10: 117014.000000 (U), 0.000000 (p), 0.313925 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 130980.500000 (U), 0.000000 (p), 0.304437 (r)
+[one-tailed MWU] Gain k=10: 125269.500000 (U), 0.000000 (p), 0.229001 (r)
+[one-tailed MWU] Gain+Reuse k=10: 139604.000000 (U), 0.000000 (p), 0.211605 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 292066.500000 (U), 0.810944 (p), -0.022349 (r)
+[one-tailed MWU] Popularity k=15: 171111.500000 (U), 0.000000 (p), 0.244925 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 193162.500000 (U), 0.000000 (p), 0.244359 (r)
+[one-tailed MWU] Gain k=15: 187375.000000 (U), 0.000000 (p), 0.141176 (r)
+[one-tailed MWU] Gain+Reuse k=15: 208641.500000 (U), 0.000000 (p), 0.187208 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 329787.000000 (U), 0.996494 (p), -0.065527 (r)
+[one-tailed MWU] Popularity k=20: 203325.500000 (U), 0.000000 (p), 0.196921 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 229406.500000 (U), 0.000000 (p), 0.186102 (r)
+[one-tailed MWU] Gain k=20: 224026.500000 (U), 0.000000 (p), 0.140676 (r)
+[one-tailed MWU] Gain+Reuse k=20: 244580.000000 (U), 0.000000 (p), 0.159065 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 351039.500000 (U), 0.999853 (p), -0.086085 (r)
+[one-tailed MWU] Popularity k=25: 227594.000000 (U), 0.000000 (p), 0.147664 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 254480.000000 (U), 0.000000 (p), 0.171360 (r)
+[one-tailed MWU] Gain k=25: 248936.000000 (U), 0.000311 (p), 0.091140 (r)
+[one-tailed MWU] Gain+Reuse k=25: 269708.500000 (U), 0.000032 (p), 0.105221 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 361171.000000 (U), 0.999999 (p), -0.112470 (r)
+[one-tailed MWU] Popularity k=30: 244892.500000 (U), 0.000020 (p), 0.109978 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 271604.000000 (U), 0.000000 (p), 0.132555 (r)
+[one-tailed MWU] Gain k=30: 266090.500000 (U), 0.039487 (p), 0.045741 (r)
+[one-tailed MWU] Gain+Reuse k=30: 286247.500000 (U), 0.010151 (p), 0.059783 (r)
+Mb: 360.62890625
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 361.140625
+Mb: 362.890625
+Mb: 367.890625
+Mb: 374.15234375
+Mb: 383.35546875
+Mb: 394.0546875
+Training finished after 0:00:34.058514
+Mb: 394.0546875
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 361.17578125
+Mb: 361.86328125
+Mb: 367.98046875
+Mb: 374.7578125
+Mb: 383.76171875
+Mb: 398.04296875
+Training finished after 0:01:05.838981
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 365.125
+Mb: 366.2890625
+Mb: 371.96484375
+Mb: 380.02734375
+Mb: 389.14453125
+Mb: 403.7578125
+Training finished after 0:00:36.112233
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 371.4765625
+Mb: 372.22265625
+Mb: 377.8203125
+Mb: 386.65625
+Mb: 395.953125
+Mb: 410.73828125
+Training finished after 0:01:13.502290
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 378.38671875
+Mb: 378.640625
+Mb: 378.9453125
+Mb: 384.4375
+Mb: 390.6875
+Mb: 402.0625
+Training finished after 0:01:18.762280
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 384.85546875
+Mb: 385.1875
+Mb: 385.4375
+Mb: 389.93359375
+Mb: 395.50390625
+Mb: 407.08984375
+Training finished after 0:01:31.813226
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 394.5234375
+Mb: 394.796875
+Mb: 395.03515625
+Mb: 395.51171875
+Mb: 400.95703125
+Mb: 408.3359375
+Training finished after 0:01:31.070065
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 401.0390625
+Mb: 344.6953125
+Mb: 345.29296875
+Mb: 347.63671875
+Mb: 352.76953125
+Mb: 358.32421875
+Mb: 369.01953125
+Training finished after 0:01:32.022784
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 353.70703125
+Mb: 353.94921875
+Mb: 354.1484375
+Mb: 357.58203125
+Mb: 362.7109375
+Mb: 370.59765625
+Training finished after 0:01:22.674422
+Mb: 344.50390625
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 159217.500000 (U), 0.004734 (p), -0.075435 (r)
+[one-tailed MWU] Popularity k=5: 29224.000000 (U), 0.000000 (p), -0.739892 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 40339.500000 (U), 0.000000 (p), -0.695033 (r)
+[one-tailed MWU] Gain k=10: 57851.000000 (U), 0.000000 (p), -0.628423 (r)
+[one-tailed MWU] Gain+Reuse k=5: 59194.000000 (U), 0.000000 (p), -0.616402 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 38521.500000 (U), 0.001351 (p), -0.121149 (r)
+[one-tailed MWU] Popularity k=10: 11779.500000 (U), 0.000000 (p), -0.651333 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 11746.000000 (U), 0.000000 (p), -0.654914 (r)
+[one-tailed MWU] Gain k=10: 17329.500000 (U), 0.000000 (p), -0.601859 (r)
+[one-tailed MWU] Gain+Reuse k=10: 15402.500000 (U), 0.000000 (p), -0.619416 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 9292.500000 (U), 0.000231 (p), -0.191035 (r)
+[one-tailed MWU] Popularity k=15: 4036.500000 (U), 0.000000 (p), -0.532044 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3859.000000 (U), 0.000000 (p), -0.544005 (r)
+[one-tailed MWU] Gain k=10: 5357.000000 (U), 0.000000 (p), -0.517040 (r)
+[one-tailed MWU] Gain+Reuse k=15: 5297.500000 (U), 0.000000 (p), -0.522017 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 3038.000000 (U), 0.043405 (p), -0.118230 (r)
+[one-tailed MWU] Popularity k=20: 1260.000000 (U), 0.000000 (p), -0.398220 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1500.000000 (U), 0.000000 (p), -0.399719 (r)
+[one-tailed MWU] Gain k=10: 1926.500000 (U), 0.000000 (p), -0.386606 (r)
+[one-tailed MWU] Gain+Reuse k=20: 2292.000000 (U), 0.000000 (p), -0.374761 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 603.000000 (U), 0.379278 (p), -0.029595 (r)
+[one-tailed MWU] Popularity k=25: 389.500000 (U), 0.000000 (p), -0.235082 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 430.500000 (U), 0.000000 (p), -0.239460 (r)
+[one-tailed MWU] Gain k=10: 507.000000 (U), 0.000000 (p), -0.237512 (r)
+[one-tailed MWU] Gain+Reuse k=25: 474.000000 (U), 0.000000 (p), -0.245480 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 117.500000 (U), 0.127295 (p), -0.147288 (r)
+[one-tailed MWU] Popularity k=30: 114.500000 (U), 0.000053 (p), -0.175870 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 126.500000 (U), 0.000074 (p), -0.181787 (r)
+[one-tailed MWU] Gain k=10: 178.500000 (U), 0.000177 (p), -0.178241 (r)
+[one-tailed MWU] Gain+Reuse k=30: 125.500000 (U), 0.000106 (p), -0.195261 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 65207.000000 (U), 0.071547 (p), 0.055235 (r)
+[one-tailed MWU] Popularity k=5: 45868.500000 (U), 0.000000 (p), 0.392093 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 51345.500000 (U), 0.000000 (p), 0.447237 (r)
+[one-tailed MWU] Gain k=5: 46116.000000 (U), 0.000000 (p), 0.398465 (r)
+[one-tailed MWU] Gain+Reuse k=5: 51616.000000 (U), 0.000000 (p), 0.352704 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 202484.000000 (U), 0.383501 (p), 0.008307 (r)
+[one-tailed MWU] Popularity k=10: 117725.500000 (U), 0.000000 (p), 0.341029 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 133687.000000 (U), 0.000000 (p), 0.295657 (r)
+[one-tailed MWU] Gain k=10: 125949.500000 (U), 0.000000 (p), 0.216244 (r)
+[one-tailed MWU] Gain+Reuse k=10: 142586.500000 (U), 0.000000 (p), 0.213268 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 288150.500000 (U), 0.878194 (p), -0.029615 (r)
+[one-tailed MWU] Popularity k=15: 167725.000000 (U), 0.000000 (p), 0.253125 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 191913.000000 (U), 0.000000 (p), 0.253387 (r)
+[one-tailed MWU] Gain k=15: 184772.000000 (U), 0.000000 (p), 0.161808 (r)
+[one-tailed MWU] Gain+Reuse k=15: 205577.500000 (U), 0.000000 (p), 0.184697 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 332392.000000 (U), 0.956132 (p), -0.041706 (r)
+[one-tailed MWU] Popularity k=20: 202234.000000 (U), 0.000000 (p), 0.200608 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 228937.500000 (U), 0.000000 (p), 0.203971 (r)
+[one-tailed MWU] Gain k=20: 222984.500000 (U), 0.000001 (p), 0.130865 (r)
+[one-tailed MWU] Gain+Reuse k=20: 245074.000000 (U), 0.000000 (p), 0.164255 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 357472.500000 (U), 0.999494 (p), -0.078027 (r)
+[one-tailed MWU] Popularity k=25: 228192.500000 (U), 0.000000 (p), 0.143742 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 256263.000000 (U), 0.000000 (p), 0.149113 (r)
+[one-tailed MWU] Gain k=25: 250500.500000 (U), 0.011122 (p), 0.060416 (r)
+[one-tailed MWU] Gain+Reuse k=25: 273006.000000 (U), 0.000607 (p), 0.084590 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 364722.000000 (U), 0.999997 (p), -0.106733 (r)
+[one-tailed MWU] Popularity k=30: 244549.500000 (U), 0.000052 (p), 0.103775 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 272284.000000 (U), 0.000014 (p), 0.110034 (r)
+[one-tailed MWU] Gain k=30: 266832.500000 (U), 0.092375 (p), 0.034430 (r)
+[one-tailed MWU] Gain+Reuse k=30: 288519.000000 (U), 0.066781 (p), 0.038405 (r)
+Mb: 400.23828125
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 400.76171875
+Mb: 400.796875
+Mb: 403.96484375
+Mb: 410.12890625
+Mb: 419.85546875
+Mb: 430.3984375
+Training finished after 0:00:36.119375
+Mb: 430.3984375
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 399.46484375
+Mb: 399.8359375
+Mb: 403.18359375
+Mb: 410.39453125
+Mb: 420.37890625
+Mb: 434.4765625
+Training finished after 0:01:11.545976
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 404.78515625
+Mb: 405.109375
+Mb: 407.79296875
+Mb: 417.0625
+Mb: 426.6171875
+Mb: 440.98828125
+Training finished after 0:00:35.655426
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 414.29296875
+Mb: 414.56640625
+Mb: 416.1328125
+Mb: 424.32421875
+Mb: 429.44921875
+Mb: 443.97265625
+Training finished after 0:01:19.485377
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 416.87890625
+Mb: 417.1796875
+Mb: 417.4296875
+Mb: 419.125
+Mb: 423.703125
+Mb: 434.32421875
+Training finished after 0:01:16.407298
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 419.8203125
+Mb: 420.16015625
+Mb: 420.5
+Mb: 420.91796875
+Mb: 425.98046875
+Mb: 437.37890625
+Training finished after 0:01:36.070316
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 430.375
+Mb: 430.390625
+Mb: 430.59375
+Mb: 430.84375
+Mb: 433.3359375
+Mb: 438.8984375
+Training finished after 0:01:36.537446
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 401.1953125
+Mb: 401.3828125
+Mb: 404.375
+Mb: 407.30859375
+Mb: 405.5234375
+Training finished after 0:01:32.823994
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 392.3828125
+Mb: 392.51953125
+Mb: 392.6171875
+Mb: 392.8359375
+Mb: 397.3046875
+Mb: 405.10546875
+Training finished after 0:01:30.253178
+Mb: 384.3671875
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 157801.000000 (U), 0.000968 (p), -0.089889 (r)
+[one-tailed MWU] Popularity k=5: 34786.500000 (U), 0.000000 (p), -0.718988 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 38008.000000 (U), 0.000000 (p), -0.703513 (r)
+[one-tailed MWU] Gain k=10: 53455.500000 (U), 0.000000 (p), -0.643517 (r)
+[one-tailed MWU] Gain+Reuse k=5: 55849.500000 (U), 0.000000 (p), -0.628987 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 38299.000000 (U), 0.000017 (p), -0.165051 (r)
+[one-tailed MWU] Popularity k=10: 11030.000000 (U), 0.000000 (p), -0.666689 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 10397.500000 (U), 0.000000 (p), -0.675827 (r)
+[one-tailed MWU] Gain k=10: 15954.500000 (U), 0.000000 (p), -0.624381 (r)
+[one-tailed MWU] Gain+Reuse k=10: 14072.500000 (U), 0.000000 (p), -0.642213 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 8582.000000 (U), 0.000454 (p), -0.182907 (r)
+[one-tailed MWU] Popularity k=15: 2620.000000 (U), 0.000000 (p), -0.535285 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 2886.000000 (U), 0.000000 (p), -0.538592 (r)
+[one-tailed MWU] Gain k=10: 4166.500000 (U), 0.000000 (p), -0.514851 (r)
+[one-tailed MWU] Gain+Reuse k=15: 3820.500000 (U), 0.000000 (p), -0.527910 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 1814.500000 (U), 0.000890 (p), -0.230401 (r)
+[one-tailed MWU] Popularity k=20: 648.000000 (U), 0.000000 (p), -0.386087 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1047.000000 (U), 0.000000 (p), -0.378397 (r)
+[one-tailed MWU] Gain k=10: 1174.000000 (U), 0.000000 (p), -0.379852 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1200.500000 (U), 0.000000 (p), -0.384433 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 371.500000 (U), 0.260456 (p), -0.063487 (r)
+[one-tailed MWU] Popularity k=25: 234.500000 (U), 0.000002 (p), -0.198813 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 193.000000 (U), 0.000001 (p), -0.211283 (r)
+[one-tailed MWU] Gain k=10: 327.000000 (U), 0.000007 (p), -0.199619 (r)
+[one-tailed MWU] Gain+Reuse k=25: 272.000000 (U), 0.000005 (p), -0.210856 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 80.500000 (U), 0.273992 (p), -0.072932 (r)
+[one-tailed MWU] Popularity k=30: 44.000000 (U), 0.002467 (p), -0.125415 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 43.500000 (U), 0.002604 (p), -0.130917 (r)
+[one-tailed MWU] Gain k=10: 74.500000 (U), 0.004272 (p), -0.128117 (r)
+[one-tailed MWU] Gain+Reuse k=30: 60.500000 (U), 0.003713 (p), -0.134472 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 63339.000000 (U), 0.112608 (p), 0.045943 (r)
+[one-tailed MWU] Popularity k=5: 45452.500000 (U), 0.000000 (p), 0.438210 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 50369.500000 (U), 0.000000 (p), 0.384727 (r)
+[one-tailed MWU] Gain k=5: 47250.000000 (U), 0.000000 (p), 0.360428 (r)
+[one-tailed MWU] Gain+Reuse k=5: 51832.000000 (U), 0.000000 (p), 0.334377 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 198324.500000 (U), 0.309471 (p), 0.014036 (r)
+[one-tailed MWU] Popularity k=10: 117210.000000 (U), 0.000000 (p), 0.324008 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 132506.500000 (U), 0.000000 (p), 0.299224 (r)
+[one-tailed MWU] Gain k=10: 127003.500000 (U), 0.000000 (p), 0.219834 (r)
+[one-tailed MWU] Gain+Reuse k=10: 141644.000000 (U), 0.000000 (p), 0.212602 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 293414.000000 (U), 0.794726 (p), -0.020854 (r)
+[one-tailed MWU] Popularity k=15: 174169.000000 (U), 0.000000 (p), 0.244305 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 196258.000000 (U), 0.000000 (p), 0.255199 (r)
+[one-tailed MWU] Gain k=15: 192718.000000 (U), 0.000000 (p), 0.183088 (r)
+[one-tailed MWU] Gain+Reuse k=15: 211264.500000 (U), 0.000000 (p), 0.197296 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 335209.000000 (U), 0.993941 (p), -0.060808 (r)
+[one-tailed MWU] Popularity k=20: 208711.500000 (U), 0.000000 (p), 0.210656 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 232742.500000 (U), 0.000000 (p), 0.231939 (r)
+[one-tailed MWU] Gain k=20: 229732.500000 (U), 0.000000 (p), 0.145103 (r)
+[one-tailed MWU] Gain+Reuse k=20: 249426.000000 (U), 0.000000 (p), 0.167429 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 358891.000000 (U), 0.999690 (p), -0.081069 (r)
+[one-tailed MWU] Popularity k=25: 232927.000000 (U), 0.000000 (p), 0.184137 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 258525.500000 (U), 0.000000 (p), 0.165636 (r)
+[one-tailed MWU] Gain k=25: 254918.500000 (U), 0.000016 (p), 0.110600 (r)
+[one-tailed MWU] Gain+Reuse k=25: 274908.500000 (U), 0.000002 (p), 0.120358 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 365448.500000 (U), 0.999980 (p), -0.096362 (r)
+[one-tailed MWU] Popularity k=30: 247707.500000 (U), 0.000000 (p), 0.153255 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 273398.000000 (U), 0.000000 (p), 0.153779 (r)
+[one-tailed MWU] Gain k=30: 269541.000000 (U), 0.001352 (p), 0.078397 (r)
+[one-tailed MWU] Gain+Reuse k=30: 288949.000000 (U), 0.000056 (p), 0.100098 (r)
+Mb: 444.01171875
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 444.77734375
+Mb: 445.02734375
+Mb: 445.87109375
+Mb: 451.27734375
+Mb: 461.10546875
+Mb: 472.0625
+Training finished after 0:00:42.918003
+Mb: 472.0625
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 444.3984375
+Mb: 444.6640625
+Mb: 444.88671875
+Mb: 453.17578125
+Mb: 462.1953125
+Mb: 476.55859375
+Training finished after 0:01:14.420719
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': False}
+Mb: 449.34375
+Mb: 449.65625
+Mb: 449.98828125
+Mb: 458.57421875
+Mb: 467.0703125
+Mb: 481.84375
+Training finished after 0:00:36.515120
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 454.6796875
+Mb: 454.9296875
+Mb: 455.0234375
+Mb: 464.0859375
+Mb: 473.09765625
+Mb: 487.70703125
+Training finished after 0:01:22.766442
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 460.828125
+Mb: 461.08203125
+Mb: 461.421875
+Mb: 461.67578125
+Mb: 466.43359375
+Mb: 478.06640625
+Training finished after 0:01:19.855405
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 468.19921875
+Mb: 468.23046875
+Mb: 468.38671875
+Mb: 468.72265625
+Mb: 471.83984375
+Mb: 482.23046875
+Training finished after 0:01:40.875296
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0.5, 'tau_3': 0, 'tau_4': 0, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': True, 'precomputed_rr': False, 'precomputed_gain': False, 'protected': True}
+Mb: 474.37109375
+Mb: 474.6171875
+Mb: 474.71484375
+Mb: 474.86328125
+Mb: 475.0
+Mb: 481.953125
+Training finished after 0:01:40.737937
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': False, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 429.828125
+Mb: 430.08203125
+Mb: 430.34765625
+Mb: 430.6875
+Mb: 435.6875
+Mb: 446.37890625
+Training finished after 0:01:33.279605
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 439.109375
+Mb: 439.38671875
+Mb: 439.41796875
+Mb: 439.51171875
+Mb: 440.05078125
+Mb: 447.67578125
+Training finished after 0:01:33.973458
+Mb: 437.01171875
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 158209.500000 (U), 0.000538 (p), -0.094629 (r)
+[one-tailed MWU] Popularity k=5: 35436.000000 (U), 0.000000 (p), -0.718357 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 35425.500000 (U), 0.000000 (p), -0.715105 (r)
+[one-tailed MWU] Gain k=10: 52559.500000 (U), 0.000000 (p), -0.649690 (r)
+[one-tailed MWU] Gain+Reuse k=5: 60037.500000 (U), 0.000000 (p), -0.616579 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 49869.500000 (U), 0.000040 (p), -0.148360 (r)
+[one-tailed MWU] Popularity k=10: 12929.500000 (U), 0.000000 (p), -0.685724 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 12734.500000 (U), 0.000000 (p), -0.689653 (r)
+[one-tailed MWU] Gain k=10: 17996.000000 (U), 0.000000 (p), -0.646652 (r)
+[one-tailed MWU] Gain+Reuse k=10: 19236.500000 (U), 0.000000 (p), -0.634921 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 10373.500000 (U), 0.010535 (p), -0.124737 (r)
+[one-tailed MWU] Popularity k=15: 3373.000000 (U), 0.000000 (p), -0.537947 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3062.500000 (U), 0.000000 (p), -0.553183 (r)
+[one-tailed MWU] Gain k=10: 5086.000000 (U), 0.000000 (p), -0.514168 (r)
+[one-tailed MWU] Gain+Reuse k=15: 4762.500000 (U), 0.000000 (p), -0.525165 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2267.500000 (U), 0.010433 (p), -0.166800 (r)
+[one-tailed MWU] Popularity k=20: 749.000000 (U), 0.000000 (p), -0.392900 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1310.000000 (U), 0.000000 (p), -0.379786 (r)
+[one-tailed MWU] Gain k=10: 1502.500000 (U), 0.000000 (p), -0.377008 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1755.000000 (U), 0.000000 (p), -0.369741 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 609.000000 (U), 0.299686 (p), -0.049162 (r)
+[one-tailed MWU] Popularity k=25: 347.000000 (U), 0.000000 (p), -0.238046 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 280.000000 (U), 0.000000 (p), -0.253354 (r)
+[one-tailed MWU] Gain k=10: 553.500000 (U), 0.000000 (p), -0.231243 (r)
+[one-tailed MWU] Gain+Reuse k=25: 460.500000 (U), 0.000000 (p), -0.246369 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 191.000000 (U), 0.306052 (p), -0.062208 (r)
+[one-tailed MWU] Popularity k=30: 158.000000 (U), 0.000019 (p), -0.185259 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 251.500000 (U), 0.000068 (p), -0.178670 (r)
+[one-tailed MWU] Gain k=10: 234.500000 (U), 0.000082 (p), -0.187633 (r)
+[one-tailed MWU] Gain+Reuse k=30: 271.000000 (U), 0.000168 (p), -0.184532 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 64352.500000 (U), 0.027110 (p), 0.073185 (r)
+[one-tailed MWU] Popularity k=5: 42752.000000 (U), 0.000000 (p), 0.415211 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 49076.000000 (U), 0.000000 (p), 0.360904 (r)
+[one-tailed MWU] Gain k=5: 45662.500000 (U), 0.000000 (p), 0.359649 (r)
+[one-tailed MWU] Gain+Reuse k=5: 50078.000000 (U), 0.000000 (p), 0.366188 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 178512.000000 (U), 0.119683 (p), 0.034268 (r)
+[one-tailed MWU] Popularity k=10: 104786.500000 (U), 0.000000 (p), 0.307302 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 118960.000000 (U), 0.000000 (p), 0.277210 (r)
+[one-tailed MWU] Gain k=10: 114040.500000 (U), 0.000000 (p), 0.215422 (r)
+[one-tailed MWU] Gain+Reuse k=10: 127178.000000 (U), 0.000000 (p), 0.238248 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 289621.500000 (U), 0.756281 (p), -0.017670 (r)
+[one-tailed MWU] Popularity k=15: 168515.500000 (U), 0.000000 (p), 0.232187 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 192441.500000 (U), 0.000000 (p), 0.241059 (r)
+[one-tailed MWU] Gain k=15: 186693.500000 (U), 0.000000 (p), 0.173300 (r)
+[one-tailed MWU] Gain+Reuse k=15: 206701.500000 (U), 0.000000 (p), 0.196152 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 336021.500000 (U), 0.981992 (p), -0.050942 (r)
+[one-tailed MWU] Popularity k=20: 205064.500000 (U), 0.000000 (p), 0.192980 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 231980.500000 (U), 0.000000 (p), 0.218703 (r)
+[one-tailed MWU] Gain k=20: 226761.000000 (U), 0.000001 (p), 0.132764 (r)
+[one-tailed MWU] Gain+Reuse k=20: 248551.500000 (U), 0.000000 (p), 0.166208 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 357637.500000 (U), 0.998929 (p), -0.072968 (r)
+[one-tailed MWU] Popularity k=25: 229700.500000 (U), 0.000000 (p), 0.154426 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 257250.000000 (U), 0.000000 (p), 0.148795 (r)
+[one-tailed MWU] Gain k=25: 251903.500000 (U), 0.000416 (p), 0.088726 (r)
+[one-tailed MWU] Gain+Reuse k=25: 273284.000000 (U), 0.000209 (p), 0.092377 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 364021.500000 (U), 0.999992 (p), -0.101348 (r)
+[one-tailed MWU] Popularity k=30: 245545.500000 (U), 0.000001 (p), 0.126396 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 272669.500000 (U), 0.000000 (p), 0.147711 (r)
+[one-tailed MWU] Gain k=30: 267534.000000 (U), 0.065438 (p), 0.039243 (r)
+[one-tailed MWU] Gain+Reuse k=30: 287718.500000 (U), 0.007340 (p), 0.062839 (r)
+
+Mb: 486.19140625
+Mb: 486.1953125
+Mb: 486.19921875
+Mb: 486.37890625
+Mb: 486.38671875
+Mb: 495.4765625
+Training finished after 0:01:35.485955
+Started training model with K: [5, 10, 15, 20, 25, 30] and {'reuse': True, 'tau_1': 0, 'tau_2': 0, 'tau_3': 0, 'tau_4': 0.5, 'precomputed_sim': True, 'precomputed_act': False, 'precomputed_pop': False, 'precomputed_rr': False, 'precomputed_gain': True, 'protected': True}
+Mb: 484.68359375
+Mb: 484.9296875
+Mb: 485.18359375
+Mb: 485.515625
+Mb: 485.85546875
+Mb: 492.2734375
+Training finished after 0:01:37.813257
+Mb: 481.79296875
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 159046.500000 (U), 0.001621 (p), -0.085329 (r)
+[one-tailed MWU] Popularity k=5: 36312.000000 (U), 0.000000 (p), -0.714512 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 39534.000000 (U), 0.000000 (p), -0.699108 (r)
+[one-tailed MWU] Gain k=10: 51595.500000 (U), 0.000000 (p), -0.652741 (r)
+[one-tailed MWU] Gain+Reuse k=5: 56741.500000 (U), 0.000000 (p), -0.628517 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 41786.000000 (U), 0.026904 (p), -0.077196 (r)
+[one-tailed MWU] Popularity k=10: 10241.000000 (U), 0.000000 (p), -0.660944 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 10015.500000 (U), 0.000000 (p), -0.667293 (r)
+[one-tailed MWU] Gain k=10: 15316.500000 (U), 0.000000 (p), -0.616258 (r)
+[one-tailed MWU] Gain+Reuse k=10: 15126.500000 (U), 0.000000 (p), -0.617632 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 9221.000000 (U), 0.000019 (p), -0.223398 (r)
+[one-tailed MWU] Popularity k=15: 3684.000000 (U), 0.000000 (p), -0.552086 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 4245.000000 (U), 0.000000 (p), -0.550739 (r)
+[one-tailed MWU] Gain k=10: 4884.500000 (U), 0.000000 (p), -0.541759 (r)
+[one-tailed MWU] Gain+Reuse k=15: 5165.500000 (U), 0.000000 (p), -0.540309 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2366.000000 (U), 0.001655 (p), -0.211471 (r)
+[one-tailed MWU] Popularity k=20: 1196.000000 (U), 0.000000 (p), -0.405673 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1087.500000 (U), 0.000000 (p), -0.422662 (r)
+[one-tailed MWU] Gain k=10: 1779.500000 (U), 0.000000 (p), -0.397819 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1414.000000 (U), 0.000000 (p), -0.421913 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 522.000000 (U), 0.032368 (p), -0.178084 (r)
+[one-tailed MWU] Popularity k=25: 299.000000 (U), 0.000000 (p), -0.271679 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 326.500000 (U), 0.000000 (p), -0.278641 (r)
+[one-tailed MWU] Gain k=10: 447.000000 (U), 0.000000 (p), -0.274551 (r)
+[one-tailed MWU] Gain+Reuse k=25: 497.000000 (U), 0.000000 (p), -0.275463 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 149.500000 (U), 0.188958 (p), -0.106570 (r)
+[one-tailed MWU] Popularity k=30: 92.000000 (U), 0.000039 (p), -0.177468 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 96.500000 (U), 0.000049 (p), -0.185431 (r)
+[one-tailed MWU] Gain k=10: 165.000000 (U), 0.000128 (p), -0.177168 (r)
+[one-tailed MWU] Gain+Reuse k=30: 144.000000 (U), 0.000119 (p), -0.186621 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 65043.500000 (U), 0.028242 (p), 0.072300 (r)
+[one-tailed MWU] Popularity k=5: 44636.500000 (U), 0.000000 (p), 0.476269 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 50249.000000 (U), 0.000000 (p), 0.434131 (r)
+[one-tailed MWU] Gain k=5: 46496.000000 (U), 0.000000 (p), 0.380822 (r)
+[one-tailed MWU] Gain+Reuse k=5: 51735.000000 (U), 0.000000 (p), 0.392143 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 204793.500000 (U), 0.096321 (p), 0.036675 (r)
+[one-tailed MWU] Popularity k=10: 118838.500000 (U), 0.000000 (p), 0.327419 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 135413.500000 (U), 0.000000 (p), 0.295689 (r)
+[one-tailed MWU] Gain k=10: 128322.500000 (U), 0.000000 (p), 0.229011 (r)
+[one-tailed MWU] Gain+Reuse k=10: 143767.000000 (U), 0.000000 (p), 0.240451 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 283225.500000 (U), 0.948361 (p), -0.041419 (r)
+[one-tailed MWU] Popularity k=15: 167096.000000 (U), 0.000000 (p), 0.263482 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 188847.000000 (U), 0.000000 (p), 0.253071 (r)
+[one-tailed MWU] Gain k=15: 183003.000000 (U), 0.000000 (p), 0.167334 (r)
+[one-tailed MWU] Gain+Reuse k=15: 201934.000000 (U), 0.000000 (p), 0.186401 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 331680.500000 (U), 0.994094 (p), -0.061188 (r)
+[one-tailed MWU] Popularity k=20: 202762.000000 (U), 0.000000 (p), 0.199078 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 229208.500000 (U), 0.000000 (p), 0.187528 (r)
+[one-tailed MWU] Gain k=20: 223011.000000 (U), 0.000001 (p), 0.134203 (r)
+[one-tailed MWU] Gain+Reuse k=20: 244435.000000 (U), 0.000000 (p), 0.136139 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 355394.000000 (U), 0.999847 (p), -0.085623 (r)
+[one-tailed MWU] Popularity k=25: 228026.500000 (U), 0.000000 (p), 0.148410 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 256150.000000 (U), 0.000000 (p), 0.168325 (r)
+[one-tailed MWU] Gain k=25: 249677.500000 (U), 0.000403 (p), 0.089150 (r)
+[one-tailed MWU] Gain+Reuse k=25: 272015.500000 (U), 0.000004 (p), 0.117590 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 365375.500000 (U), 0.999984 (p), -0.097577 (r)
+[one-tailed MWU] Popularity k=30: 245648.500000 (U), 0.000001 (p), 0.125765 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 273674.500000 (U), 0.000001 (p), 0.125761 (r)
+[one-tailed MWU] Gain k=30: 267054.000000 (U), 0.002174 (p), 0.074637 (r)
+[one-tailed MWU] Gain+Reuse k=30: 288588.000000 (U), 0.000739 (p), 0.082133 (r)
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 162194.500000 (U), 0.000002 (p), -0.130719 (r)
+[one-tailed MWU] Popularity k=5: 33678.500000 (U), 0.000000 (p), -0.735325 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 41572.000000 (U), 0.000000 (p), -0.704472 (r)
+[one-tailed MWU] Gain k=10: 51850.000000 (U), 0.000000 (p), -0.666778 (r)
+[one-tailed MWU] Gain+Reuse k=5: 59204.500000 (U), 0.000000 (p), -0.635831 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 40119.500000 (U), 0.000001 (p), -0.187389 (r)
+[one-tailed MWU] Popularity k=10: 10138.000000 (U), 0.000000 (p), -0.686675 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 11292.500000 (U), 0.000000 (p), -0.679760 (r)
+[one-tailed MWU] Gain k=10: 15591.000000 (U), 0.000000 (p), -0.642088 (r)
+[one-tailed MWU] Gain+Reuse k=10: 17022.500000 (U), 0.000000 (p), -0.628477 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 8524.500000 (U), 0.000082 (p), -0.205374 (r)
+[one-tailed MWU] Popularity k=15: 2975.500000 (U), 0.000000 (p), -0.526680 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3878.500000 (U), 0.000000 (p), -0.516101 (r)
+[one-tailed MWU] Gain k=10: 4403.500000 (U), 0.000000 (p), -0.509181 (r)
+[one-tailed MWU] Gain+Reuse k=15: 4161.000000 (U), 0.000000 (p), -0.519047 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2205.000000 (U), 0.025175 (p), -0.141665 (r)
+[one-tailed MWU] Popularity k=20: 990.500000 (U), 0.000000 (p), -0.366604 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1044.000000 (U), 0.000000 (p), -0.373906 (r)
+[one-tailed MWU] Gain k=10: 1431.500000 (U), 0.000000 (p), -0.361772 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1371.500000 (U), 0.000000 (p), -0.371404 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 556.000000 (U), 0.098864 (p), -0.120438 (r)
+[one-tailed MWU] Popularity k=25: 305.000000 (U), 0.000000 (p), -0.250397 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 258.000000 (U), 0.000000 (p), -0.263176 (r)
+[one-tailed MWU] Gain k=10: 550.500000 (U), 0.000000 (p), -0.242574 (r)
+[one-tailed MWU] Gain+Reuse k=25: 380.000000 (U), 0.000000 (p), -0.265162 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 94.000000 (U), 0.213776 (p), -0.099238 (r)
+[one-tailed MWU] Popularity k=30: 63.500000 (U), 0.000636 (p), -0.145020 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 87.000000 (U), 0.000931 (p), -0.145929 (r)
+[one-tailed MWU] Gain k=10: 111.000000 (U), 0.001492 (p), -0.146912 (r)
+[one-tailed MWU] Gain+Reuse k=30: 88.000000 (U), 0.001205 (p), -0.156172 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 53553.500000 (U), 0.320258 (p), 0.018338 (r)
+[one-tailed MWU] Popularity k=5: 39111.000000 (U), 0.000000 (p), 0.399331 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 43328.500000 (U), 0.000000 (p), 0.402062 (r)
+[one-tailed MWU] Gain k=5: 41134.000000 (U), 0.000000 (p), 0.353718 (r)
+[one-tailed MWU] Gain+Reuse k=5: 45227.500000 (U), 0.000000 (p), 0.362513 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 193440.500000 (U), 0.179541 (p), 0.026131 (r)
+[one-tailed MWU] Popularity k=10: 113635.000000 (U), 0.000000 (p), 0.312565 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 128193.500000 (U), 0.000000 (p), 0.311251 (r)
+[one-tailed MWU] Gain k=10: 122663.500000 (U), 0.000000 (p), 0.221682 (r)
+[one-tailed MWU] Gain+Reuse k=10: 135895.500000 (U), 0.000000 (p), 0.253412 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 294613.500000 (U), 0.620299 (p), -0.007780 (r)
+[one-tailed MWU] Popularity k=15: 173105.500000 (U), 0.000000 (p), 0.262999 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 194677.000000 (U), 0.000000 (p), 0.272600 (r)
+[one-tailed MWU] Gain k=15: 191088.500000 (U), 0.000000 (p), 0.182452 (r)
+[one-tailed MWU] Gain+Reuse k=15: 208705.500000 (U), 0.000000 (p), 0.197212 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 336942.000000 (U), 0.978892 (p), -0.049340 (r)
+[one-tailed MWU] Popularity k=20: 207160.000000 (U), 0.000000 (p), 0.212600 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 232160.000000 (U), 0.000000 (p), 0.215983 (r)
+[one-tailed MWU] Gain k=20: 228967.500000 (U), 0.000000 (p), 0.143005 (r)
+[one-tailed MWU] Gain+Reuse k=20: 248440.500000 (U), 0.000000 (p), 0.143963 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 354789.500000 (U), 0.999637 (p), -0.080302 (r)
+[one-tailed MWU] Popularity k=25: 229676.500000 (U), 0.000000 (p), 0.171242 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 254874.500000 (U), 0.000000 (p), 0.169607 (r)
+[one-tailed MWU] Gain k=25: 251818.000000 (U), 0.000045 (p), 0.104317 (r)
+[one-tailed MWU] Gain+Reuse k=25: 271488.000000 (U), 0.000025 (p), 0.106521 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 364707.000000 (U), 0.999994 (p), -0.102350 (r)
+[one-tailed MWU] Popularity k=30: 247101.500000 (U), 0.000000 (p), 0.131280 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 271717.000000 (U), 0.000000 (p), 0.144985 (r)
+[one-tailed MWU] Gain k=30: 268816.500000 (U), 0.019848 (p), 0.053523 (r)
+[one-tailed MWU] Gain+Reuse k=30: 287720.500000 (U), 0.006035 (p), 0.064639 (r)
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 160341.000000 (U), 0.000246 (p), -0.100315 (r)
+[one-tailed MWU] Popularity k=5: 33857.500000 (U), 0.000000 (p), -0.724423 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 36822.500000 (U), 0.000000 (p), -0.710623 (r)
+[one-tailed MWU] Gain k=10: 56948.500000 (U), 0.000000 (p), -0.635271 (r)
+[one-tailed MWU] Gain+Reuse k=5: 57748.500000 (U), 0.000000 (p), -0.627169 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 36570.000000 (U), 0.001692 (p), -0.119435 (r)
+[one-tailed MWU] Popularity k=10: 9046.000000 (U), 0.000000 (p), -0.660281 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 9679.000000 (U), 0.000000 (p), -0.658256 (r)
+[one-tailed MWU] Gain k=10: 13979.000000 (U), 0.000000 (p), -0.615773 (r)
+[one-tailed MWU] Gain+Reuse k=10: 14730.500000 (U), 0.000000 (p), -0.607812 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 9224.500000 (U), 0.058581 (p), -0.087469 (r)
+[one-tailed MWU] Popularity k=15: 2943.500000 (U), 0.000000 (p), -0.511940 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3376.000000 (U), 0.000000 (p), -0.509824 (r)
+[one-tailed MWU] Gain k=10: 5264.000000 (U), 0.000000 (p), -0.471163 (r)
+[one-tailed MWU] Gain+Reuse k=15: 5395.500000 (U), 0.000000 (p), -0.470693 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2400.000000 (U), 0.572462 (p), 0.013506 (r)
+[one-tailed MWU] Popularity k=20: 1220.000000 (U), 0.000000 (p), -0.334263 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1295.500000 (U), 0.000000 (p), -0.339073 (r)
+[one-tailed MWU] Gain k=10: 1646.500000 (U), 0.000000 (p), -0.326757 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1305.500000 (U), 0.000000 (p), -0.350501 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 723.000000 (U), 0.569758 (p), 0.016785 (r)
+[one-tailed MWU] Popularity k=25: 482.000000 (U), 0.000000 (p), -0.258678 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 519.000000 (U), 0.000000 (p), -0.265602 (r)
+[one-tailed MWU] Gain k=10: 603.500000 (U), 0.000000 (p), -0.263155 (r)
+[one-tailed MWU] Gain+Reuse k=25: 621.500000 (U), 0.000000 (p), -0.264967 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 86.000000 (U), 0.031318 (p), -0.241764 (r)
+[one-tailed MWU] Popularity k=30: 69.000000 (U), 0.000030 (p), -0.181577 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 63.500000 (U), 0.000032 (p), -0.191630 (r)
+[one-tailed MWU] Gain k=10: 73.500000 (U), 0.000040 (p), -0.196160 (r)
+[one-tailed MWU] Gain+Reuse k=30: 87.000000 (U), 0.000054 (p), -0.199553 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 63788.000000 (U), 0.003456 (p), 0.103661 (r)
+[one-tailed MWU] Popularity k=5: 43325.500000 (U), 0.000000 (p), 0.386711 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 49121.000000 (U), 0.000000 (p), 0.387410 (r)
+[one-tailed MWU] Gain k=5: 44207.500000 (U), 0.000000 (p), 0.382325 (r)
+[one-tailed MWU] Gain+Reuse k=5: 49034.000000 (U), 0.000000 (p), 0.360272 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 209827.000000 (U), 0.165771 (p), 0.027100 (r)
+[one-tailed MWU] Popularity k=10: 122195.500000 (U), 0.000000 (p), 0.322668 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 137967.000000 (U), 0.000000 (p), 0.309065 (r)
+[one-tailed MWU] Gain k=10: 131142.500000 (U), 0.000000 (p), 0.214390 (r)
+[one-tailed MWU] Gain+Reuse k=10: 145809.500000 (U), 0.000000 (p), 0.241443 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 294532.500000 (U), 0.847605 (p), -0.025939 (r)
+[one-tailed MWU] Popularity k=15: 173534.500000 (U), 0.000000 (p), 0.245387 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 196720.000000 (U), 0.000000 (p), 0.272838 (r)
+[one-tailed MWU] Gain k=15: 190561.000000 (U), 0.000000 (p), 0.182904 (r)
+[one-tailed MWU] Gain+Reuse k=15: 209855.500000 (U), 0.000000 (p), 0.195393 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 338279.500000 (U), 0.991617 (p), -0.057889 (r)
+[one-tailed MWU] Popularity k=20: 207508.000000 (U), 0.000000 (p), 0.204466 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 233369.000000 (U), 0.000000 (p), 0.202288 (r)
+[one-tailed MWU] Gain k=20: 227581.500000 (U), 0.000066 (p), 0.103845 (r)
+[one-tailed MWU] Gain+Reuse k=20: 249988.500000 (U), 0.000005 (p), 0.118017 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 352156.000000 (U), 0.999976 (p), -0.096347 (r)
+[one-tailed MWU] Popularity k=25: 227405.500000 (U), 0.000000 (p), 0.150269 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 254254.000000 (U), 0.000000 (p), 0.136728 (r)
+[one-tailed MWU] Gain k=25: 248772.000000 (U), 0.009199 (p), 0.062432 (r)
+[one-tailed MWU] Gain+Reuse k=25: 271491.000000 (U), 0.000056 (p), 0.101500 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 363004.000000 (U), 0.999999 (p), -0.111159 (r)
+[one-tailed MWU] Popularity k=30: 245165.000000 (U), 0.000020 (p), 0.109999 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 271650.500000 (U), 0.000020 (p), 0.107852 (r)
+[one-tailed MWU] Gain k=30: 266737.500000 (U), 0.067270 (p), 0.038886 (r)
+[one-tailed MWU] Gain+Reuse k=30: 288520.000000 (U), 0.006195 (p), 0.064380 (r)
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 157688.500000 (U), 0.000222 (p), -0.101516 (r)
+[one-tailed MWU] Popularity k=5: 31848.500000 (U), 0.000000 (p), -0.732826 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 36304.000000 (U), 0.000000 (p), -0.713587 (r)
+[one-tailed MWU] Gain k=10: 55290.000000 (U), 0.000000 (p), -0.641590 (r)
+[one-tailed MWU] Gain+Reuse k=5: 58362.500000 (U), 0.000000 (p), -0.624478 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 40874.000000 (U), 0.007397 (p), -0.097569 (r)
+[one-tailed MWU] Popularity k=10: 10241.500000 (U), 0.000000 (p), -0.664005 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 10713.500000 (U), 0.000000 (p), -0.663392 (r)
+[one-tailed MWU] Gain k=10: 14632.500000 (U), 0.000000 (p), -0.626483 (r)
+[one-tailed MWU] Gain+Reuse k=10: 13024.500000 (U), 0.000000 (p), -0.642818 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 9882.500000 (U), 0.000048 (p), -0.208573 (r)
+[one-tailed MWU] Popularity k=15: 3762.000000 (U), 0.000000 (p), -0.551560 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3406.000000 (U), 0.000000 (p), -0.566727 (r)
+[one-tailed MWU] Gain k=10: 5397.500000 (U), 0.000000 (p), -0.531287 (r)
+[one-tailed MWU] Gain+Reuse k=15: 5289.000000 (U), 0.000000 (p), -0.536849 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2144.500000 (U), 0.002941 (p), -0.198316 (r)
+[one-tailed MWU] Popularity k=20: 1009.500000 (U), 0.000000 (p), -0.381191 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1081.000000 (U), 0.000000 (p), -0.389448 (r)
+[one-tailed MWU] Gain k=10: 1722.000000 (U), 0.000000 (p), -0.365670 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1641.500000 (U), 0.000000 (p), -0.375009 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 410.000000 (U), 0.048357 (p), -0.159490 (r)
+[one-tailed MWU] Popularity k=25: 305.000000 (U), 0.000000 (p), -0.229236 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 279.500000 (U), 0.000000 (p), -0.240456 (r)
+[one-tailed MWU] Gain k=10: 392.500000 (U), 0.000000 (p), -0.235035 (r)
+[one-tailed MWU] Gain+Reuse k=25: 402.500000 (U), 0.000000 (p), -0.237783 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 104.500000 (U), 0.094713 (p), -0.158088 (r)
+[one-tailed MWU] Popularity k=30: 95.500000 (U), 0.000194 (p), -0.159533 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 48.000000 (U), 0.000118 (p), -0.174928 (r)
+[one-tailed MWU] Gain k=10: 131.000000 (U), 0.000410 (p), -0.165306 (r)
+[one-tailed MWU] Gain+Reuse k=30: 107.000000 (U), 0.000339 (p), -0.175113 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 60876.500000 (U), 0.224431 (p), 0.028858 (r)
+[one-tailed MWU] Popularity k=5: 43976.000000 (U), 0.000000 (p), 0.393152 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 48933.500000 (U), 0.000000 (p), 0.386569 (r)
+[one-tailed MWU] Gain k=5: 44423.000000 (U), 0.000000 (p), 0.350701 (r)
+[one-tailed MWU] Gain+Reuse k=5: 49208.500000 (U), 0.000000 (p), 0.332184 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 201718.500000 (U), 0.214535 (p), 0.022262 (r)
+[one-tailed MWU] Popularity k=10: 119682.500000 (U), 0.000000 (p), 0.344369 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 132856.500000 (U), 0.000000 (p), 0.298337 (r)
+[one-tailed MWU] Gain k=10: 128987.500000 (U), 0.000000 (p), 0.221840 (r)
+[one-tailed MWU] Gain+Reuse k=10: 143359.000000 (U), 0.000000 (p), 0.214225 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 281962.500000 (U), 0.897220 (p), -0.032298 (r)
+[one-tailed MWU] Popularity k=15: 167235.500000 (U), 0.000000 (p), 0.251550 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 189485.500000 (U), 0.000000 (p), 0.253716 (r)
+[one-tailed MWU] Gain k=15: 184626.500000 (U), 0.000000 (p), 0.183672 (r)
+[one-tailed MWU] Gain+Reuse k=15: 203124.500000 (U), 0.000000 (p), 0.209660 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 335765.500000 (U), 0.981199 (p), -0.050530 (r)
+[one-tailed MWU] Popularity k=20: 206612.500000 (U), 0.000000 (p), 0.224073 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 231262.500000 (U), 0.000000 (p), 0.213140 (r)
+[one-tailed MWU] Gain k=20: 227169.500000 (U), 0.000000 (p), 0.156224 (r)
+[one-tailed MWU] Gain+Reuse k=20: 247294.500000 (U), 0.000000 (p), 0.163320 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 358233.500000 (U), 0.999505 (p), -0.078131 (r)
+[one-tailed MWU] Popularity k=25: 230319.500000 (U), 0.000000 (p), 0.171794 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 256360.500000 (U), 0.000000 (p), 0.160650 (r)
+[one-tailed MWU] Gain k=25: 252285.500000 (U), 0.000803 (p), 0.083633 (r)
+[one-tailed MWU] Gain+Reuse k=25: 272458.000000 (U), 0.000011 (p), 0.111388 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 365323.000000 (U), 0.999984 (p), -0.097628 (r)
+[one-tailed MWU] Popularity k=30: 245811.000000 (U), 0.000001 (p), 0.127381 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 271429.500000 (U), 0.000003 (p), 0.118754 (r)
+[one-tailed MWU] Gain k=30: 267586.000000 (U), 0.026391 (p), 0.050412 (r)
+[one-tailed MWU] Gain+Reuse k=30: 287301.000000 (U), 0.008763 (p), 0.061153 (r)
+=== [Privacy Risk - Secures] H0: Popularity > UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 156846.500000 (U), 0.000485 (p), -0.095626 (r)
+[one-tailed MWU] Popularity k=5: 33411.500000 (U), 0.000000 (p), -0.724026 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 39493.000000 (U), 0.000000 (p), -0.698525 (r)
+[one-tailed MWU] Gain k=10: 53445.000000 (U), 0.000000 (p), -0.645504 (r)
+[one-tailed MWU] Gain+Reuse k=5: 61292.500000 (U), 0.000000 (p), -0.610534 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=10: 34887.500000 (U), 0.000001 (p), -0.194414 (r)
+[one-tailed MWU] Popularity k=10: 9394.000000 (U), 0.000000 (p), -0.675725 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 11694.000000 (U), 0.000000 (p), -0.658110 (r)
+[one-tailed MWU] Gain k=10: 15330.500000 (U), 0.000000 (p), -0.624517 (r)
+[one-tailed MWU] Gain+Reuse k=10: 14176.500000 (U), 0.000000 (p), -0.635614 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=15: 8989.500000 (U), 0.008125 (p), -0.131704 (r)
+[one-tailed MWU] Popularity k=15: 4487.000000 (U), 0.000000 (p), -0.475669 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 3221.500000 (U), 0.000000 (p), -0.512040 (r)
+[one-tailed MWU] Gain k=10: 4617.500000 (U), 0.000000 (p), -0.482998 (r)
+[one-tailed MWU] Gain+Reuse k=15: 4685.500000 (U), 0.000000 (p), -0.484517 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=20: 2342.000000 (U), 0.035309 (p), -0.132290 (r)
+[one-tailed MWU] Popularity k=20: 1081.000000 (U), 0.000000 (p), -0.381178 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 1055.000000 (U), 0.000000 (p), -0.391685 (r)
+[one-tailed MWU] Gain k=10: 1477.500000 (U), 0.000000 (p), -0.378684 (r)
+[one-tailed MWU] Gain+Reuse k=20: 1495.500000 (U), 0.000000 (p), -0.382913 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=25: 449.000000 (U), 0.043790 (p), -0.172932 (r)
+[one-tailed MWU] Popularity k=25: 309.000000 (U), 0.000000 (p), -0.261099 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 313.500000 (U), 0.000000 (p), -0.269315 (r)
+[one-tailed MWU] Gain k=10: 405.000000 (U), 0.000000 (p), -0.268031 (r)
+[one-tailed MWU] Gain+Reuse k=25: 457.000000 (U), 0.000000 (p), -0.268184 (r)
+
+[one-tailed MWU] UserKNN+Reuse k=30: 53.000000 (U), 0.077785 (p), -0.201145 (r)
+[one-tailed MWU] Popularity k=30: 62.500000 (U), 0.000632 (p), -0.145556 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 70.000000 (U), 0.000775 (p), -0.151304 (r)
+[one-tailed MWU] Gain k=10: 102.000000 (U), 0.001322 (p), -0.148930 (r)
+[one-tailed MWU] Gain+Reuse k=30: 90.000000 (U), 0.001267 (p), -0.156434 (r)
+
+=== [Privacy Risk - Vulnerables] H0: Popularity < UserKNN
+[one-tailed MWU] UserKNN+Reuse k=5: 65704.500000 (U), 0.013948 (p), 0.083347 (r)
+[one-tailed MWU] Popularity k=5: 44437.000000 (U), 0.000000 (p), 0.414921 (r)
+[one-tailed MWU] Popularity+Reuse k=5: 49692.000000 (U), 0.000000 (p), 0.430413 (r)
+[one-tailed MWU] Gain k=5: 45968.000000 (U), 0.000000 (p), 0.405239 (r)
+[one-tailed MWU] Gain+Reuse k=5: 50245.000000 (U), 0.000000 (p), 0.391145 (r)
+[one-tailed MWU] UserKNN+Reuse k=10: 200762.000000 (U), 0.477130 (p), 0.001610 (r)
+[one-tailed MWU] Popularity k=10: 115925.500000 (U), 0.000000 (p), 0.308155 (r)
+[one-tailed MWU] Popularity+Reuse k=10: 130610.500000 (U), 0.000000 (p), 0.305140 (r)
+[one-tailed MWU] Gain k=10: 124207.500000 (U), 0.000000 (p), 0.217009 (r)
+[one-tailed MWU] Gain+Reuse k=10: 139420.500000 (U), 0.000000 (p), 0.219554 (r)
+[one-tailed MWU] UserKNN+Reuse k=15: 297637.500000 (U), 0.537876 (p), -0.002411 (r)
+[one-tailed MWU] Popularity k=15: 170623.500000 (U), 0.000000 (p), 0.281271 (r)
+[one-tailed MWU] Popularity+Reuse k=15: 194675.000000 (U), 0.000000 (p), 0.235125 (r)
+[one-tailed MWU] Gain k=15: 189830.000000 (U), 0.000000 (p), 0.170314 (r)
+[one-tailed MWU] Gain+Reuse k=15: 210501.000000 (U), 0.000000 (p), 0.204621 (r)
+[one-tailed MWU] UserKNN+Reuse k=20: 333919.500000 (U), 0.994122 (p), -0.061120 (r)
+[one-tailed MWU] Popularity k=20: 203030.000000 (U), 0.000000 (p), 0.175699 (r)
+[one-tailed MWU] Popularity+Reuse k=20: 230131.000000 (U), 0.000000 (p), 0.196317 (r)
+[one-tailed MWU] Gain k=20: 224600.500000 (U), 0.000009 (p), 0.117478 (r)
+[one-tailed MWU] Gain+Reuse k=20: 246005.000000 (U), 0.000000 (p), 0.147888 (r)
+[one-tailed MWU] UserKNN+Reuse k=25: 354109.000000 (U), 0.999981 (p), -0.097415 (r)
+[one-tailed MWU] Popularity k=25: 227530.000000 (U), 0.000000 (p), 0.149734 (r)
+[one-tailed MWU] Popularity+Reuse k=25: 255132.000000 (U), 0.000000 (p), 0.167498 (r)
+[one-tailed MWU] Gain k=25: 249475.500000 (U), 0.000813 (p), 0.083741 (r)
+[one-tailed MWU] Gain+Reuse k=25: 270027.000000 (U), 0.000016 (p), 0.109637 (r)
+[one-tailed MWU] UserKNN+Reuse k=30: 365423.000000 (U), 0.999999 (p), -0.113677 (r)
+[one-tailed MWU] Popularity k=30: 245551.000000 (U), 0.000004 (p), 0.119341 (r)
+[one-tailed MWU] Popularity+Reuse k=30: 272490.000000 (U), 0.000005 (p), 0.115935 (r)
+[one-tailed MWU] Gain k=30: 267245.000000 (U), 0.036256 (p), 0.046715 (r)
+[one-tailed MWU] Gain+Reuse k=30: 287310.000000 (U), 0.015366 (p), 0.055546 (r)
