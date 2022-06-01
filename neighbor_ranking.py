@@ -339,14 +339,14 @@ def evaluate(models):
     results = dict()
     results["mean_absolute_error"] = [mean_absolute_error(m) for m in models]
     #results["avg_neighborhood_size"] = [avg_neighborhood_size(m) for m in models]
-    #results["recommendation_frequency"] = [recommendation_frequency(m, threshold=4) for m in models]
-    #results["fraction_vulnerables"] = [fraction_vulnerables(m) for m in models]
+    results["recommendation_frequency"] = [recommendation_frequency(m, threshold=4) for m in models]
+    results["fraction_vulnerables"] = [fraction_vulnerables(m) for m in models]
     #results["avg_privacy_risk"] = [avg_privacy_risk(m) for m in models]
-    #results["avg_privacy_risk_dp"] = [avg_privacy_risk_dp(m) for m in models]
-    #results["avg_neighborhood_size_q"] = [avg_neighborhood_size_q(m, n_queries=100) for m in models]
-    #results["avg_item_coverage_q"] = [avg_item_coverage_q(m, n_queries=100) for m in models]
-    #results["avg_rating_overlap_q"] = [avg_rating_overlap_q(m, n_queries=100) for m in models]
-    #results["mean_absolute_error_q"] = [mean_absolute_error_q(m, n_queries=100) for m in models]
+    results["avg_privacy_risk_dp"] = [avg_privacy_risk_dp(m) for m in models]
+    results["avg_neighborhood_size_q"] = [avg_neighborhood_size_q(m, n_queries=100) for m in models]
+    results["avg_item_coverage_q"] = [avg_item_coverage_q(m, n_queries=100) for m in models]
+    results["avg_rating_overlap_q"] = [avg_rating_overlap_q(m, n_queries=100) for m in models]
+    results["mean_absolute_error_q"] = [mean_absolute_error_q(m, n_queries=100) for m in models]
 
     return results
 
