@@ -17,26 +17,18 @@ from algorithms import evaluation, utils
 def run(trainset, testset, K, configuration={}):
     reuse = configuration.get("reuse", False)
     sim = configuration.get("precomputed_sim", None)
-    act = configuration.get("preocmputed_act", None)
     pop = configuration.get("precomputed_pop", None)
-    rr = configuration.get("precomputed_rr", None)
     gain = configuration.get("precomputed_gain", None)
     overlap = configuration.get("precomputed_overlap", None)
     rated_items = configuration.get("rated_items", None)
-    tau_1 = configuration.get("tau_1", 0) #activity
     tau_2 = configuration.get("tau_2", 0) #expect
-    tau_3 = configuration.get("tau_3", 0) #rr expect
     tau_4 = configuration.get("tau_4", 0) #gain
-    tau_5 = configuration.get("tau_5", 0) #rr pop
-    tau_6 = configuration.get("tau_6", 0) #pop
 
     thresholds = configuration.get("thresholds", None)
     protected = configuration.get("protected", False)
 
-    config_str = str({"reuse": reuse, "tau_1": tau_1, "tau_2": tau_2, "tau_3": tau_3, "tau_4": tau_4, "tau_5": tau_5, "tau_6": tau_6,
-                      "precomputed_sim": sim is not None, "precomputed_act": act is not None,
-                      "precomputed_pop": pop is not None, "precomputed_rr": rr is not None,
-                      "precomputed_gain": gain is not None, "protected": protected,
+    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "precomputed_sim": sim is not None,
+                      "precomputed_pop": pop is not None, "precomputed_gain": gain is not None, "protected": protected,
                       "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None})
 
     t0 = dt.now()
@@ -47,8 +39,8 @@ def run(trainset, testset, K, configuration={}):
             th = thresholds[idx]
         else:
             th = 0
-        model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_act=act, precomputed_pop=pop,
-                        precomputed_rr=rr, precomputed_gain=gain, tau_1=tau_1, tau_2=tau_2, tau_3=tau_3, tau_4=tau_4, tau_5=tau_5, tau_6=tau_6,
+        model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_pop=pop,
+                        precomputed_gain=gain, tau_2=tau_2, tau_4=tau_4,
                         threshold=th, protected=protected, precomputed_overlap=overlap, rated_items=rated_items)
         model.fit(trainset)
         predictions = model.test(testset)
@@ -131,8 +123,6 @@ for trainset, testset in folds.split(dataset):
     gain = UserKNN.compute_gain(trainset)
     overlap = UserKNN.compute_overlap(trainset)
     rated_items = UserKNN.compute_rated_items(trainset)
-
-    low, med, high = identify_user_groups(trainset)
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
