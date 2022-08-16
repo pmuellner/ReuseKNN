@@ -1,3 +1,3 @@
-# ReuseKNN: Neighborhood Reuse for Privacy-Aware Recommendations
+# ReuseKNN: Neighborhood Reuse for Differentially-Private KNN-Based Recommendations
 
-Under review.
+Under review for TIST.
