@@ -43,12 +43,21 @@ def _evaluate(models, users=None):
         avg, sample = metrics.avg_privacy_risk(m, users=users)
         results["avg_privacy_risk"].append(avg)
         results_samples["avg_privacy_risk"].append(sample)
+        avg, sample = metrics.ndcg(m, users=users)
+        results["avg_ndcg"].append(avg)
+        results_samples["avg_ndcg"].append(sample)
 
-        below_threshold_pr = (m.privacy_risk[m.privacy_risk < m.threshold])
+        frac_vulnerables = metrics.fraction_vulnerables(m, users=users)
+        results["fraction_vulnerables"].append(frac_vulnerables)
+        if 1 - frac_vulnerables > 0:
+            below_threshold_pr = (m.privacy_risk[m.privacy_risk < m.threshold])
+
+        else:
+            # if there are no secures
+            below_threshold_pr = [0]
         results["avg_privacy_risk_dp_secures"].append(np.mean(below_threshold_pr))
         results_samples["avg_privacy_risk_dp_secures"].append(below_threshold_pr)
 
-        results["fraction_vulnerables"].append(metrics.fraction_vulnerables(m, users=users))
         results["recommendation_frequency"].append(metrics.recommendation_frequency(m, n=10, users=users))
 
     return results, results_samples

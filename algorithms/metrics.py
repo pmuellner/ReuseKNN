@@ -1,6 +1,7 @@
 import numpy as np
 from collections import defaultdict
 from scipy.stats import rankdata, spearmanr
+from algorithms.utils import get_top_n, get_groundtruth
 
 
 def avg_neighborhood_size_q(model, n_queries):
@@ -77,6 +78,24 @@ def mean_absolute_error(model, users=None):
 
     return np.mean(absolute_errors), absolute_errors
 
+#todo
+def ndcg(model, n=10, users=None):
+    groundtruth = get_groundtruth(model.predictions, threshold=model.trainset.global_mean)
+    recommendation_lists = get_top_n(model.predictions, n=n)
+    ndcgs = []
+    for uid, rec_list in recommendation_lists.items():
+        n = len(rec_list)
+        dcg = 0.0
+        for i in range(1, n + 1):
+            item_at_i = rec_list[i - 1]
+            rel_i = item_at_i in groundtruth[uid]
+            dcg += rel_i / np.log2(i + 1)
+            # dcg += (np.power(2, rel_i) - 1) / np.log2(i + 1)
+
+        idcg = np.sum([1 / np.log(i + 1) for i in range(1, n + 1)])
+        ndcgs.append(dcg / idcg)
+
+    return np.mean(ndcgs), ndcgs
 
 def avg_neighborhood_size(model, users=None):
     sizes = []

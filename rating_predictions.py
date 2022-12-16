@@ -71,22 +71,22 @@ else:
 
 
 if NAME == "ml-100k":
-    data_df = pd.read_csv("data/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 elif NAME == "ml-1m":
-    data_df = pd.read_csv("data/ml-1m/ratings.dat", sep="::", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/ml-1m/ratings.dat", sep="::", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 elif NAME == "goodreads":
-    data_df = pd.read_csv("data/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 elif NAME == "lfm":
-    data_df = pd.read_csv("data/lfm/artist_ratings.csv", sep=";", names=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/lfm/artist_ratings.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 1000))
 elif NAME == "ciao":
-    data_df = pd.read_csv("data/ciao/ciao.csv", sep=";", names=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/ciao/ciao.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 elif NAME == "douban":
-    data_df = pd.read_csv("data/douban/douban.csv", sep=";", names=["user_id", "item_id", "rating"])
+    data_df = pd.read_csv("../datasets/douban/douban.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 else:
     print("error")
@@ -108,6 +108,7 @@ K = [5, 10, 15, 20, 25, 30]
 K_q_idx = 1
 privacy_risk = defaultdict(list)
 mean_absolute_error = defaultdict(list)
+ndcg = defaultdict(list)
 recommendation_frequency = defaultdict(list)
 fraction_vulnerables = defaultdict(list)
 privacy_risk_dp = defaultdict(list)
@@ -142,6 +143,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
     results, userknn_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn"].append(results["mean_absolute_error"])
+    ndcg["userknn"].append(results["avg_ndcg"])
     recommendation_frequency["userknn"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn"].append(results["avg_privacy_risk_dp"])
@@ -155,6 +157,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [np.inf for _ in range(len(K))], "protected": False})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_no"].append(results["mean_absolute_error"])
+    ndcg["userknn_no"].append(results["avg_ndcg"])
     recommendation_frequency["userknn_no"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_no"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_no"].append(results["avg_privacy_risk_dp"])
@@ -169,6 +172,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": [0 for _ in range(len(K))], "protected": True})
     results, userknn_full_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_full"].append(results["mean_absolute_error"])
+    ndcg["userknn_full"].append(results["avg_ndcg"])
     recommendation_frequency["userknn_full"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_full"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_full"].append(results["avg_privacy_risk_dp"])
@@ -177,13 +181,14 @@ for trainset, testset in folds.split(dataset):
     privacy_risk_dp_secures["userknn_full"].append(results["avg_privacy_risk_dp_secures"])
     privacy_risk["userknn_full"].append(userknn_full_results_samples["avg_privacy_risk"])
     significance_test_results["userknn_full"].append(evaluation.significance_tests(userknn_results_samples, userknn_full_results_samples))
-    significance_test_results_full["userknn"].append(evaluation.significance_tests(userknn_full_results_samples, userknn_results_samples))
+    significance_test_results_full["userknn_full"].append(evaluation.significance_tests(userknn_full_results_samples, userknn_results_samples))
     del models, results
 
     # KNN + reuse
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn_reuse"].append(results["mean_absolute_error"])
+    ndcg["userknn_reuse"].append(results["avg_ndcg"])
     recommendation_frequency["userknn_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["userknn_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["userknn_reuse"].append(results["avg_privacy_risk_dp"])
@@ -199,6 +204,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_pop": pop, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["expect"].append(results["mean_absolute_error"])
+    ndcg["expect"].append(results["avg_ndcg"])
     recommendation_frequency["expect"].append(results["recommendation_frequency"])
     fraction_vulnerables["expect"].append(results["fraction_vulnerables"])
     privacy_risk_dp["expect"].append(results["avg_privacy_risk_dp"])
@@ -214,6 +220,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_pop": pop, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_2": 0.5, "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["expect_reuse"].append(results["mean_absolute_error"])
+    ndcg["expect_reuse"].append(results["avg_ndcg"])
     recommendation_frequency["expect_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["expect_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["expect_reuse"].append(results["avg_privacy_risk_dp"])
@@ -229,6 +236,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain"].append(results["mean_absolute_error"])
+    ndcg["gain"].append(results["avg_ndcg"])
     recommendation_frequency["gain"].append(results["recommendation_frequency"])
     fraction_vulnerables["gain"].append(results["fraction_vulnerables"])
     privacy_risk_dp["gain"].append(results["avg_privacy_risk_dp"])
@@ -244,6 +252,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain_reuse"].append(results["mean_absolute_error"])
+    ndcg["gain_reuse"].append(results["avg_ndcg"])
     recommendation_frequency["gain_reuse"].append(results["recommendation_frequency"])
     fraction_vulnerables["gain_reuse"].append(results["fraction_vulnerables"])
     privacy_risk_dp["gain_reuse"].append(results["avg_privacy_risk_dp"])
@@ -261,7 +270,7 @@ for trainset, testset in folds.split(dataset):
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
     n_folds += 1
-    break
+    #break
 
 #exit()
 
@@ -317,6 +326,15 @@ np.save("results/" + PATH + "/mae_expect.npy", np.mean(mean_absolute_error["expe
 np.save("results/" + PATH + "/mae_expect_reuse.npy", np.mean(mean_absolute_error["expect_reuse"], axis=0))
 np.save("results/" + PATH + "/mae_gain.npy", np.mean(mean_absolute_error["gain"], axis=0))
 np.save("results/" + PATH + "/mae_gain_reuse.npy", np.mean(mean_absolute_error["gain_reuse"], axis=0))
+
+np.save("results/" + PATH + "/ndcg_userknn_no.npy", np.mean(ndcg["userknn_no"], axis=0))
+np.save("results/" + PATH + "/ndcg_userknn_full.npy", np.mean(ndcg["userknn_full"], axis=0))
+np.save("results/" + PATH + "/ndcg_userknn.npy", np.mean(ndcg["userknn"], axis=0))
+np.save("results/" + PATH + "/ndcg_userknn_reuse.npy", np.mean(ndcg["userknn_reuse"], axis=0))
+np.save("results/" + PATH + "/ndcg_expect.npy", np.mean(ndcg["expect"], axis=0))
+np.save("results/" + PATH + "/ndcg_expect_reuse.npy", np.mean(ndcg["expect_reuse"], axis=0))
+np.save("results/" + PATH + "/ndcg_gain.npy", np.mean(ndcg["gain"], axis=0))
+np.save("results/" + PATH + "/ndcg_gain_reuse.npy", np.mean(ndcg["gain_reuse"], axis=0))
 
 np.save("results/" + PATH + "/privacy_risk_dp_userknn_no.npy", np.mean(privacy_risk_dp["userknn_no"], axis=0))
 np.save("results/" + PATH + "/privacy_risk_dp_userknn_full.npy", np.mean(privacy_risk_dp["userknn_full"], axis=0))
