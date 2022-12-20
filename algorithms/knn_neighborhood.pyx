@@ -8,13 +8,15 @@ from sklearn.neighbors import KernelDensity
 import sys
 from scipy.special import softmax
 from scipy.stats import rankdata
+from embeddings.embeddings import Embeddings
+from scipy.spatial.distance import cdist
 
 class PredictionImpossible(Exception):
     pass
 
 class UserKNN:
-    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_2=0, tau_4=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_gain=None, precomputed_overlap=None, threshold=0, rated_items=None, protected=False):
+    def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_2=0, tau_4=0, tau_6=0, precomputed_sim=None,
+                 precomputed_pop=None, precomputed_gain=None, precomputed_overlap=None, precomputed_gainplus=None, threshold=0, rated_items=None, protected=False, use_embedding=False):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -25,10 +27,12 @@ class UserKNN:
         self.reuse_neighbors = reuse
         self.tau_2 = tau_2
         self.tau_4 = tau_4
+        self.tau_6 = tau_6
         self.sim = precomputed_sim if precomputed_sim is not None else None
         self.pop = precomputed_pop if precomputed_pop is not None else None
         self.gain = precomputed_gain if precomputed_gain is not None else None
         self.overlap = precomputed_overlap if precomputed_overlap is not None else None
+        self.gainplus = precomputed_gainplus if precomputed_gainplus is not None else None
         self.random_neighbors = random
         self.privacy_score = None
         self.threshold = threshold
@@ -36,6 +40,7 @@ class UserKNN:
         self.nr_noisy_ratings = []
         self.avg_sims = []
         self.rated_items = None
+        self.use_embedding = use_embedding
 
     def fit(self, trainset):
         self.trainset = trainset
@@ -49,7 +54,10 @@ class UserKNN:
         if self.overlap is None:
             self.overlap = self.compute_overlap(self.trainset)
 
-        if self.sim is None:
+        if self.use_embedding:
+            # TODO user-user similarity
+            pass
+        elif self.sim is None:
             self.sim = self.compute_similarities(self.trainset, self.min_k)
 
         if self.pop is None and self.tau_2 > 0:
@@ -58,6 +66,19 @@ class UserKNN:
 
         if self.gain is None and self.tau_4 > 0:
             self.gain = self.compute_gain(self.trainset)
+
+        if self.gainplus is None and self.tau_6 > 0:
+            if self.use_embedding:
+                pass
+            else:
+                # generate item vectors based on ratings
+                rating_matrix = np.zeros((self.trainset.n_users, self.trainset.n_items))
+                for uid, iid, r in self.trainset.all_ratings():
+                    rating_matrix[uid, iid] = r
+
+                self.top_item_neighbors = UserKNN.topk_item_neighbors(rating_matrix.T, k=10)
+
+            self.gainplus = UserKNN.compute_gainplus(self.trainset, self.top_item_neighbors)
 
         self.privacy_risk = np.zeros((self.trainset.n_users))
         self.privacy_risk_dp = np.zeros((self.trainset.n_users))
@@ -71,13 +92,17 @@ class UserKNN:
                 poprank = rankdata(self.pop, method="max")
             if self.gain is not None:
                 gainrank = rankdata(self.gain[u, :], method="max")
+            if self.gainplus:
+                gainplusrank = rankdata(self.gainplus[u, :], method="max")
 
             if self.pop is not None:
                  self.ranking[u] += self.tau_2 * poprank
             if self.gain is not None:
                  self.ranking[u] += self.tau_4 * gainrank
+            if self.gainplus is not None:
+                self.ranking[u] += self.tau_6 * gainplusrank
             if self.sim is not None:
-                 self.ranking[u] += (1.0 - self.tau_2 - self.tau_4) * simrank
+                 self.ranking[u] += (1.0 - self.tau_2 - self.tau_4 - self.tau_6) * simrank
 
         return self
 
@@ -156,6 +181,9 @@ class UserKNN:
         noisy = 0
         avg_sim = np.mean([sim for sim, _, _, _ in k_neighbors])
         for (sim, rank, r, u_) in k_neighbors:
+            if sim <= 0:
+                continue
+
             self.privacy_risk[u_] += 1
 
             response = r
@@ -170,7 +198,6 @@ class UserKNN:
                 sum_ratings += sim * response
                 actual_k += 1
                 sum_rank += rank
-
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
 
@@ -463,10 +490,6 @@ class UserKNN:
 
     @staticmethod
     def compute_gain(trainset):
-        item_popularities = np.zeros(trainset.n_items)
-        for i, ratings in trainset.ir.items():
-            item_popularities[i] = float(len(ratings)) / trainset.n_users
-
         knowledge = defaultdict(list)
         for uid, ratings in trainset.ur.items():
             knowledge[uid].extend([iid for iid, _ in ratings])
@@ -482,6 +505,40 @@ class UserKNN:
 
                 gain[student, mentor] = g
         return gain
+
+    @staticmethod
+    def compute_gainplus(trainset, top_neighbors):
+        print("compute gainplus")
+        knowledge = defaultdict(list)
+        for uid, ratings in trainset.ur.items():
+            knowledge[uid].extend([iid for iid, _ in ratings])
+
+        gainplus = np.zeros((trainset.n_users, trainset.n_users))
+        i = 0
+        for mentor in trainset.all_users():
+            print(i)
+            i += 1
+            for student in trainset.all_users():
+                g = 0.0
+                n_queries = len(knowledge[student])
+                if n_queries > 0:
+                    #g = float(len(set(knowledge[mentor]).intersection(knowledge[student]))) / len(knowledge[student])
+                    iids_no_match = list(set(knowledge[student]).difference(knowledge[mentor]))
+                    g += n_queries - len(iids_no_match)
+
+                    for iid in iids_no_match:
+                        for neighbor, sim in top_neighbors[iid]:
+                            if neighbor in knowledge[mentor]:
+                                g += sim
+                                break
+
+                g /= len(knowledge[student])
+
+                gainplus[student, mentor] = g
+
+
+
+        return gainplus
 
     def get_privacy_threshold(self):
         scores = self.privacy_risk
@@ -499,3 +556,20 @@ class UserKNN:
             if self.protected and q >= self.threshold:
                 protected_neighbors.add(uid)
         return protected_neighbors
+
+    @staticmethod
+    def _cosine_distance(A, B):
+        return cdist(A, B, "cosine")
+
+    @staticmethod
+    def topk_item_neighbors(item_vectors, k=10):
+        sim = defaultdict(list)
+        for item, vector_i in enumerate(item_vectors):
+            sim_i = cdist([vector_i], item_vectors)
+            sim_i[0, item] = 0
+            random_vector = np.random.randn(len(sim_i[0]))
+            topn_items = np.lexsort((random_vector, sim_i[0]))[-k:]
+            for neighbor in topn_items:
+                sim[item].append((neighbor, sim_i[0, neighbor]))
+            sim[item] = sorted(sim[item], key=lambda t: t[1], reverse=True)
+        return sim
