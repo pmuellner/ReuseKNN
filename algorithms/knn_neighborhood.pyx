@@ -509,9 +509,12 @@ class UserKNN:
     @staticmethod
     def compute_gainplus(trainset, top_neighbors):
         print("compute gainplus")
-        knowledge = defaultdict(list)
+        """knowledge = defaultdict(list)
         for uid, ratings in trainset.ur.items():
-            knowledge[uid].extend([iid for iid, _ in ratings])
+            knowledge[uid].extend([iid for iid, _ in ratings])"""
+        knowledge = defaultdict(set)
+        for uid, ratings in trainset.ur.items():
+            knowledge[uid] = knowledge[uid].union([iid for iid, _ in ratings])
 
         gainplus = np.zeros((trainset.n_users, trainset.n_users))
         i = 0

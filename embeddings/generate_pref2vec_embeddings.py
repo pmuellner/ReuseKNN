@@ -29,11 +29,26 @@ from distutils.version import LooseVersion
 
 import gensim
 from gensim.models.word2vec import Word2Vec
+from gensim.models.callbacks import CallbackAny2Vec
 from six import iteritems, itervalues, next
 
 SHUFFLE_NEVER = 0
 SHUFFLE_ALWAYS = 1
 SHUFFLE_ONCE = 2
+
+class callback(CallbackAny2Vec):
+    '''Callback to print loss after each epoch.'''
+    def __init__(self):
+        self.epoch = 0
+
+    def on_epoch_end(self, model):
+        loss = model.get_latest_training_loss()
+        if self.epoch == 0:
+            print('Loss after epoch {}: {}'.format(self.epoch, loss))
+        else:
+            print('Loss after epoch {}: {}'.format(self.epoch, loss - self.loss_previous_step))
+        self.epoch += 1
+        self.loss_previous_step = loss
 
 
 def repeat_simple(rating_tuple):
@@ -189,7 +204,7 @@ def train_with_parameters(
 
     model = Word2Vec(None, size=size, window=window, min_count=min_count,
                      hs=hs, sg=sg, iter=n_iter, negative=negative,
-                     workers=workers)
+                     workers=workers, compute_loss=True, callbacks=[callback()])
     model.build_vocab(sentences)
     if LooseVersion(gensim.__version__) <= LooseVersion('0.13.4.1'):
         model.train(sentences, total_examples=model.corpus_count,
@@ -351,5 +366,6 @@ def main(parameters):
 
 
 if __name__ == '__main__':
-    parameters = "-d 300 -w 50 -m cbow -t ns -s 10 --function id --shuffle 1 --user-based -i 300 --datapath ../../datasets/ml-1m/ratings_tab.csv -o ../results/embeddings/ml-1m/"
+    #parameters = "-d 300 -w 50 -m cbow -t ns -s 10 --function id --shuffle 1 --user-based -i 300 --datapath ../../datasets/ml-1m/ratings_tab.csv -o ../results/embeddings/ml-1m/"
+    parameters = "-d 10 -w 1 -m cbow -t ns -s 10 --function id --shuffle 1 --user-based -i 10 --datapath ../../datasets/ml-1m/ratings_tab.csv -o ../results/embeddings/ml-1m/"
     main(parameters.split())

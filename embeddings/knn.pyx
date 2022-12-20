@@ -52,9 +52,6 @@ class UserKNNEmbedding:
         if self.overlap is None:
             self.overlap = self.compute_overlap(self.trainset)
 
-        print(np.isnan(self.user_embedding.embeddings).mean())
-        print(np.isnan(self.item_embedding.embeddings).mean())
-
         item_embedding_mapped = np.zeros_like(self.item_embedding.embeddings)
         for inner_iid in self.trainset.all_items():
             raw_iid = self.trainset.to_raw_iid(inner_iid)

@@ -23,11 +23,12 @@ def run(trainset, testset, K, configuration={}):
     rated_items = configuration.get("rated_items", None)
     tau_2 = configuration.get("tau_2", 0) #expect
     tau_4 = configuration.get("tau_4", 0) #gain
+    tau_6 = configuration.get("tau_6", 0)
 
     thresholds = configuration.get("thresholds", None)
     protected = configuration.get("protected", False)
 
-    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "precomputed_sim": sim is not None,
+    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "tau_6": tau_6, "precomputed_sim": sim is not None,
                       "precomputed_pop": pop is not None, "precomputed_gain": gain is not None, "protected": protected,
                       "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None})
 
@@ -40,7 +41,7 @@ def run(trainset, testset, K, configuration={}):
         else:
             th = 0
         model = UserKNN(k=k, reuse=reuse, precomputed_sim=sim, precomputed_pop=pop,
-                        precomputed_gain=gain, tau_2=tau_2, tau_4=tau_4,
+                        precomputed_gain=gain, tau_2=tau_2, tau_4=tau_4, tau_6=tau_6,
                         threshold=th, protected=protected, precomputed_overlap=overlap, rated_items=rated_items)
         model.fit(trainset)
         predictions = model.test(testset)
@@ -119,6 +120,7 @@ significance_test_results = defaultdict(list)
 significance_test_results_full = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
+    starttime = dt.now()
     sim = UserKNN.compute_similarities(trainset, min_support=1, kind="cosine")
     pop = UserKNN.compute_popularities(trainset)
     gain = UserKNN.compute_gain(trainset)
@@ -140,7 +142,7 @@ for trainset, testset in folds.split(dataset):
     del models
 
     # KNN
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
+    """models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "protected": PROTECTED})
     results, userknn_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn"].append(results["mean_absolute_error"])
     ndcg["userknn"].append(results["avg_ndcg"])
@@ -246,10 +248,25 @@ for trainset, testset in folds.split(dataset):
     privacy_risk["gain"].append(results_samples["avg_privacy_risk"])
     significance_test_results["gain"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
     significance_test_results_full["gain"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
-    del models, results, results_samples
+    del models, results, results_samples"""
 
     # Gain + reuse
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    """models, _ = run(trainset, testset, K=K, configuration={"reuse": True, "precomputed_sim": sim, "precomputed_gain": gain, "precomputed_overlap": overlap, "rated_items": rated_items, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    mean_absolute_error["gain_reuse"].append(results["mean_absolute_error"])
+    ndcg["gain_reuse"].append(results["avg_ndcg"])
+    recommendation_frequency["gain_reuse"].append(results["recommendation_frequency"])
+    fraction_vulnerables["gain_reuse"].append(results["fraction_vulnerables"])
+    privacy_risk_dp["gain_reuse"].append(results["avg_privacy_risk_dp"])
+    neighborhood_size_q["gain_reuse"].append(results["avg_neighborhood_size_q"])
+    rating_overlap_q["gain_reuse"].append(results["avg_rating_overlap_q"])
+    privacy_risk_dp_secures["gain_reuse"].append(results["avg_privacy_risk_dp_secures"])
+    privacy_risk["gain_reuse"].append(results_samples["avg_privacy_risk"])
+    significance_test_results["gain_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
+    significance_test_results_full["gain_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
+    del models, results, results_samples"""
+
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "tau_6": 0.5, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain_reuse"].append(results["mean_absolute_error"])
     ndcg["gain_reuse"].append(results["avg_ndcg"])
@@ -270,9 +287,8 @@ for trainset, testset in folds.split(dataset):
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
     n_folds += 1
-    #break
+    break
 
-#exit()
 
 f = open("results/" + PATH + "/privacy_risk_distribution.pkl", "wb")
 pl.dump(privacy_risk, f)
