@@ -16,7 +16,8 @@ class PredictionImpossible(Exception):
 
 class UserKNN:
     def __init__(self, k=40, min_k=1, random=False, reuse=False, tau_2=0, tau_4=0, tau_6=0, precomputed_sim=None,
-                 precomputed_pop=None, precomputed_gain=None, precomputed_overlap=None, precomputed_gainplus=None, threshold=0, rated_items=None, protected=False, use_embedding=False):
+                 precomputed_pop=None, precomputed_gain=None, precomputed_overlap=None, precomputed_gainplus=None, threshold=0, rated_items=None, protected=False,
+                 user_embedding=None, item_embedding=None):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
@@ -28,7 +29,7 @@ class UserKNN:
         self.tau_2 = tau_2
         self.tau_4 = tau_4
         self.tau_6 = tau_6
-        self.sim = precomputed_sim if precomputed_sim is not None else None
+        self.user_sim = precomputed_sim if precomputed_sim is not None else None
         self.pop = precomputed_pop if precomputed_pop is not None else None
         self.gain = precomputed_gain if precomputed_gain is not None else None
         self.overlap = precomputed_overlap if precomputed_overlap is not None else None
@@ -40,7 +41,8 @@ class UserKNN:
         self.nr_noisy_ratings = []
         self.avg_sims = []
         self.rated_items = None
-        self.use_embedding = use_embedding
+        self.user_embedding = user_embedding
+        self.item_embedding = item_embedding
 
     def fit(self, trainset):
         self.trainset = trainset
@@ -54,11 +56,17 @@ class UserKNN:
         if self.overlap is None:
             self.overlap = self.compute_overlap(self.trainset)
 
-        if self.use_embedding:
-            # TODO user-user similarity
-            pass
-        elif self.sim is None:
-            self.sim = self.compute_similarities(self.trainset, self.min_k)
+        if self.user_embedding is not None:
+            """user_embedding_mapped = np.zeros_like(self.user_embedding.embeddings)
+            for inner_uid in self.trainset.all_users():
+                raw_uid = self.trainset.to_raw_uid(inner_uid)
+                index = self.user_embedding.item2index[raw_uid]
+                user_embedding_mapped[inner_uid] = self.user_embedding.embeddings[index]
+            self.user_embedding = user_embedding_mapped
+            #self.user_sim = self.cosine(self.user_embedding)"""
+            self.user_sim = 1 - UserKNN.cosine_distance(self.user_embedding)
+        elif self.user_sim is None:
+            self.user_sim = self.compute_similarities(self.trainset, self.min_k)
 
         if self.pop is None and self.tau_2 > 0:
             self.pop = self.compute_popularities(self.trainset)
@@ -68,14 +76,19 @@ class UserKNN:
             self.gain = self.compute_gain(self.trainset)
 
         if self.gainplus is None and self.tau_6 > 0:
-            if self.use_embedding:
-                pass
+            if self.item_embedding:
+                """item_embedding_mapped = np.zeros_like(self.item_embedding.embeddings)
+                for inner_iid in self.trainset.all_items():
+                    raw_iid = self.trainset.to_raw_iid(inner_iid)
+                    index = self.item_embedding.item2index[raw_iid]
+                    item_embedding_mapped[inner_iid] = self.item_embedding.embeddings[index]
+                self.item_embedding = item_embedding_mapped"""
+                self.top_item_neighbors = UserKNN.topk_item_neighbors(self.item_embedding, k=10)
             else:
                 # generate item vectors based on ratings
                 rating_matrix = np.zeros((self.trainset.n_users, self.trainset.n_items))
                 for uid, iid, r in self.trainset.all_ratings():
                     rating_matrix[uid, iid] = r
-
                 self.top_item_neighbors = UserKNN.topk_item_neighbors(rating_matrix.T, k=10)
 
             self.gainplus = UserKNN.compute_gainplus(self.trainset, self.top_item_neighbors)
@@ -86,13 +99,13 @@ class UserKNN:
         # Tradeoff
         self.ranking = np.zeros((self.trainset.n_users, self.trainset.n_users))
         for u in self.trainset.all_users():
-            if self.sim is not None:
-                simrank = rankdata(self.sim[u, :], method="max")
+            """if self.user_sim is not None:
+                simrank = rankdata(self.user_sim[u, :], method="max")
             if self.pop is not None:
                 poprank = rankdata(self.pop, method="max")
             if self.gain is not None:
                 gainrank = rankdata(self.gain[u, :], method="max")
-            if self.gainplus:
+            if self.gainplus is not None:
                 gainplusrank = rankdata(self.gainplus[u, :], method="max")
 
             if self.pop is not None:
@@ -101,8 +114,20 @@ class UserKNN:
                  self.ranking[u] += self.tau_4 * gainrank
             if self.gainplus is not None:
                 self.ranking[u] += self.tau_6 * gainplusrank
-            if self.sim is not None:
-                 self.ranking[u] += (1.0 - self.tau_2 - self.tau_4 - self.tau_6) * simrank
+            if self.user_sim is not None:
+                 self.ranking[u] += (1.0 - self.tau_2 - self.tau_4 - self.tau_6) * simrank"""
+
+            simrank = rankdata(self.user_sim[u, :], method="max")
+            self.ranking[u] = (1 - self.tau_2 - self.tau_4 - self.tau_6) * simrank
+            if self.tau_2 > 0:
+                poprank = rankdata(self.pop, method="max")
+                self.ranking[u] += self.tau_2 * poprank
+            if self.tau_4 > 0:
+                gainrank = rankdata(self.gain[u, :], method="max")
+                self.ranking[u] += self.tau_4 * gainrank
+            if self.tau_6 > 0:
+                gainplusrank = rankdata(self.gainplus[u, :], method="max")
+                self.ranking[u] += self.tau_6 * gainplusrank
 
         return self
 
@@ -134,7 +159,7 @@ class UserKNN:
         possible_mentors = set(u_ for u_, _ in modified_ir)
 
         ranks = self.ranking[u]
-        possible_mentors_data = [(u_, self.sim[u, u_], ranks[u_], r) for u_, r in modified_ir if u_ != u]
+        possible_mentors_data = [(u_, self.user_sim[u, u_], ranks[u_], r) for u_, r in modified_ir if u_ != u]
         np.random.shuffle(possible_mentors_data)
         possible_mentors_data = sorted(possible_mentors_data, key=lambda t: t[2])[::-1]
 
@@ -181,8 +206,8 @@ class UserKNN:
         noisy = 0
         avg_sim = np.mean([sim for sim, _, _, _ in k_neighbors])
         for (sim, rank, r, u_) in k_neighbors:
-            if sim <= 0:
-                continue
+            #if sim <= 0:
+            #    continue
 
             self.privacy_risk[u_] += 1
 
@@ -508,19 +533,12 @@ class UserKNN:
 
     @staticmethod
     def compute_gainplus(trainset, top_neighbors):
-        print("compute gainplus")
-        """knowledge = defaultdict(list)
-        for uid, ratings in trainset.ur.items():
-            knowledge[uid].extend([iid for iid, _ in ratings])"""
         knowledge = defaultdict(set)
         for uid, ratings in trainset.ur.items():
             knowledge[uid] = knowledge[uid].union([iid for iid, _ in ratings])
 
         gainplus = np.zeros((trainset.n_users, trainset.n_users))
-        i = 0
         for mentor in trainset.all_users():
-            print(i)
-            i += 1
             for student in trainset.all_users():
                 g = 0.0
                 n_queries = len(knowledge[student])
@@ -536,10 +554,7 @@ class UserKNN:
                                 break
 
                 g /= len(knowledge[student])
-
                 gainplus[student, mentor] = g
-
-
 
         return gainplus
 
@@ -561,8 +576,11 @@ class UserKNN:
         return protected_neighbors
 
     @staticmethod
-    def _cosine_distance(A, B):
-        return cdist(A, B, "cosine")
+    def cosine_distance(A, B=None):
+        if B is None:
+            return cdist(A, A, "cosine")
+        else:
+            return cdist(A, B, "cosine")
 
     @staticmethod
     def topk_item_neighbors(item_vectors, k=10):

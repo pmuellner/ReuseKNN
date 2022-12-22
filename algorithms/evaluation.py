@@ -11,11 +11,13 @@ from scipy.stats import mannwhitneyu
     return results"""
 
 
-def evaluate(models, models_q):
+def evaluate(models, models_q=None):
     results, results_samples = _evaluate(models)
-    results_q, results_q_samples = _evaluate_q(models_q)
-
-    return {**results, **results_q}, {**results_samples, **results_q_samples}
+    if models_q is not None:
+        results_q, results_q_samples = _evaluate_q(models_q)
+        return {**results, **results_q}, {**results_samples, **results_q_samples}
+    else:
+        return {**results, **results_samples}
 
 def _evaluate_q(models):
     results = defaultdict(list)

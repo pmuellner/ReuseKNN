@@ -26,6 +26,7 @@ import sys
 import time
 from distutils.util import strtobool
 from distutils.version import LooseVersion
+from itertools import product as cartesian_product
 
 import gensim
 from gensim.models.word2vec import Word2Vec
@@ -366,6 +367,31 @@ def main(parameters):
 
 
 if __name__ == '__main__':
-    #parameters = "-d 300 -w 50 -m cbow -t ns -s 10 --function id --shuffle 1 --user-based -i 300 --datapath ../../datasets/ml-1m/ratings_tab.csv -o ../results/embeddings/ml-1m/"
-    parameters = "-d 10 -w 1 -m cbow -t ns -s 10 --function id --shuffle 1 --user-based -i 10 --datapath ../../datasets/ml-1m/ratings_tab.csv -o ../results/embeddings/ml-1m/"
-    main(parameters.split())
+    D = [10, 25, 50]
+    N = [10]
+    I = [25, 50, 100]
+    W = [10, 25, 50]
+
+    if len(sys.argv) == 2:
+        dataset_name = sys.argv[1]
+    else:
+        dataset_name = "ml-100k"
+
+    dataset_path = "../../datasets/" + dataset_name + "/ratings_tab.csv"
+    output_path = "../results/embeddings/" + dataset_name + "/"
+
+    print("Dataset: %s" % dataset_path)
+
+    parameter_configurations = cartesian_product(D, N, I, W)
+    for n_dimensions, n_negative_samples, n_iterations, window_size in parameter_configurations:
+        # user-based
+        parameters = "-d {d} -w {w} -m cbow -t ns -s {s} --function id --shuffle 1 --user-based -i {i} --datapath {input_path} -o {output_path}".format(
+            d=n_dimensions, w=window_size, s=n_negative_samples, i=n_iterations, input_path=dataset_path, output_path=output_path)
+        print(parameters)
+        main(parameters.split())
+
+        # item-based
+        parameters = "-d {d} -w {w} -m cbow -t ns -s {s} --function id --shuffle 1 --item-based -i {i} --datapath {input_path} -o {output_path}".format(
+            d=n_dimensions, w=window_size, s=n_negative_samples, i=n_iterations, input_path=dataset_path, output_path=output_path)
+        print(parameters)
+        main(parameters.split())
