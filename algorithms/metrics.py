@@ -34,7 +34,7 @@ def avg_item_coverage_q(model, n_queries):
     return item_coverage_over_q, item_coverage_over_q_sample
 
 
-def avg_rating_overlap_q(model, n_queries):
+def avg_rating_overlap_q(model, n_queries=100):
     q_max = np.max([len(rating_overlap_at_q) for rating_overlap_at_q in model.rating_overlap_at_q.values()])
     rating_overlap_over_q = [0]
     rating_overlap_over_q_sample = [[0] * len(model.rating_overlap_at_q)]
@@ -47,7 +47,6 @@ def avg_rating_overlap_q(model, n_queries):
         rating_overlap_over_q_sample.append(rating_overlap_at_q)
 
     return rating_overlap_over_q, rating_overlap_over_q_sample
-
 
 def mean_absolute_error_q(model, n_queries):
     q_max = np.max([len(absolute_errors) for absolute_errors in model.absolute_errors.values()])

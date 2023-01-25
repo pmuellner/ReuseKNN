@@ -3,13 +3,8 @@ from numpy cimport ndarray
 import numpy as np
 import heapq
 from collections import defaultdict
-from six import iteritems
 from sklearn.neighbors import KernelDensity
-import sys
-from scipy.special import softmax
 from scipy.stats import rankdata
-from embeddings.embeddings import Embeddings
-from scipy.spatial.distance import cdist
 from sklearn.metrics.pairwise import cosine_similarity
 
 class PredictionImpossible(Exception):
@@ -94,8 +89,6 @@ class UserKNN:
                 new_possible_mentors_data = [record for record in possible_mentors_data if u_ in mentors]
                 possible_mentors_data = new_possible_mentors_data
             elif str(self.explicit_reuse_option).lower() == "dynamic":
-                # todo add burn-in period?
-                # todo does this also solve the problem with too strong reuse? select reuse neighbors from large init neighborhood --> less accuracy decrease
                 previous_items = self.previous_query_neighborhoods[u].keys()
                 neighbor_counts = np.zeros(self.trainset.n_users)
                 for item in previous_items:
@@ -110,6 +103,7 @@ class UserKNN:
                 for u_, sim, sim_rank, r in possible_mentors_data:
                     reuse_rank = reuse_ranks[u_]
                     reranked.append((u_, sim, sim_rank + reuse_rank, r))
+
                 possible_mentors_data = reranked
             else:
                 print("Invalid value for explicit_reuse_option: %s" % self.explicit_reuse_option)

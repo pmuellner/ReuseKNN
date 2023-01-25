@@ -23,7 +23,7 @@ def run(trainset, testset, K, configuration={}):
     rated_items = configuration.get("rated_items", None)
     tau_2 = configuration.get("tau_2", 0) #expect
     tau_4 = configuration.get("tau_4", 0) #gain
-    tau_6 = configuration.get("tau_6", 0)
+    tau_6 = configuration.get("tau_6", 0) #gainplus
 
     thresholds = configuration.get("thresholds", None)
     protected = configuration.get("protected", False)
@@ -135,6 +135,7 @@ for trainset, testset in folds.split(dataset):
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "protected": False})
     threshs = [m.get_privacy_threshold() for m in models]
     thresholds.append(threshs)
+    print(threshs)
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -266,21 +267,6 @@ for trainset, testset in folds.split(dataset):
     significance_test_results_full["gain_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
     del models, results, results_samples"""
 
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "precomputed_sim": sim, "precomputed_overlap": overlap, "rated_items": rated_items, "thresholds": threshs, "tau_6": 0.5, "protected": PROTECTED})
-    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
-    mean_absolute_error["gain_reuse"].append(results["mean_absolute_error"])
-    ndcg["gain_reuse"].append(results["avg_ndcg"])
-    recommendation_frequency["gain_reuse"].append(results["recommendation_frequency"])
-    fraction_vulnerables["gain_reuse"].append(results["fraction_vulnerables"])
-    privacy_risk_dp["gain_reuse"].append(results["avg_privacy_risk_dp"])
-    neighborhood_size_q["gain_reuse"].append(results["avg_neighborhood_size_q"])
-    rating_overlap_q["gain_reuse"].append(results["avg_rating_overlap_q"])
-    privacy_risk_dp_secures["gain_reuse"].append(results["avg_privacy_risk_dp_secures"])
-    privacy_risk["gain_reuse"].append(results_samples["avg_privacy_risk"])
-    significance_test_results["gain_reuse"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
-    significance_test_results_full["gain_reuse"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
-    del models, results, results_samples
-
     del sim, gain, pop, overlap, rated_items
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -288,6 +274,7 @@ for trainset, testset in folds.split(dataset):
 
     n_folds += 1
     break
+exit()
 
 
 f = open("results/" + PATH + "/privacy_risk_distribution.pkl", "wb")

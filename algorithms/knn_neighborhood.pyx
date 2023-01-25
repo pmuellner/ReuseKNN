@@ -10,6 +10,7 @@ from scipy.special import softmax
 from scipy.stats import rankdata
 from embeddings.embeddings import Embeddings
 from scipy.spatial.distance import cdist
+from sklearn.metrics.pairwise import cosine_similarity
 
 class PredictionImpossible(Exception):
     pass
@@ -41,8 +42,8 @@ class UserKNN:
         self.nr_noisy_ratings = []
         self.avg_sims = []
         self.rated_items = None
-        self.user_embedding = user_embedding
-        self.item_embedding = item_embedding
+        #self.user_embedding = user_embedding
+        #self.item_embedding = item_embedding
 
     def fit(self, trainset):
         self.trainset = trainset
@@ -56,17 +57,18 @@ class UserKNN:
         if self.overlap is None:
             self.overlap = self.compute_overlap(self.trainset)
 
-        if self.user_embedding is not None:
-            """user_embedding_mapped = np.zeros_like(self.user_embedding.embeddings)
-            for inner_uid in self.trainset.all_users():
-                raw_uid = self.trainset.to_raw_uid(inner_uid)
-                index = self.user_embedding.item2index[raw_uid]
-                user_embedding_mapped[inner_uid] = self.user_embedding.embeddings[index]
-            self.user_embedding = user_embedding_mapped
+        # todo
+        """if self.user_embedding is not None:
+            #user_embedding_mapped = np.zeros_like(self.user_embedding.embeddings)
+            #for inner_uid in self.trainset.all_users():
+            #    raw_uid = self.trainset.to_raw_uid(inner_uid)
+            #    index = self.user_embedding.item2index[raw_uid]
+            #    user_embedding_mapped[inner_uid] = self.user_embedding.embeddings[index]
+            #self.user_embedding = user_embedding_mapped
             #self.user_sim = self.cosine(self.user_embedding)"""
-            self.user_sim = 1 - UserKNN.cosine_distance(self.user_embedding)
-        elif self.user_sim is None:
-            self.user_sim = self.compute_similarities(self.trainset, self.min_k)
+            #self.user_sim = 1 - UserKNN.cosine_distance(self.user_embedding)
+        #elif self.user_sim is None:
+         #   self.user_sim = self.compute_similarities(self.trainset, self.min_k)""""""
 
         if self.pop is None and self.tau_2 > 0:
             self.pop = self.compute_popularities(self.trainset)
@@ -118,7 +120,7 @@ class UserKNN:
                  self.ranking[u] += (1.0 - self.tau_2 - self.tau_4 - self.tau_6) * simrank"""
 
             simrank = rankdata(self.user_sim[u, :], method="max")
-            self.ranking[u] = (1 - self.tau_2 - self.tau_4 - self.tau_6) * simrank
+            self.ranking[u] = (1.0 - self.tau_2 - self.tau_4 - self.tau_6) * simrank
             if self.tau_2 > 0:
                 poprank = rankdata(self.pop, method="max")
                 self.ranking[u] += self.tau_2 * poprank
@@ -200,14 +202,12 @@ class UserKNN:
 
         # UserKNN
         sum_sim = sum_ratings = actual_k = 0.0
-        sum_rank = 0.0
         est = 0
         pr_unprotected = []
-        noisy = 0
         avg_sim = np.mean([sim for sim, _, _, _ in k_neighbors])
         for (sim, rank, r, u_) in k_neighbors:
-            #if sim <= 0:
-            #    continue
+            if sim <= 0:
+                continue
 
             self.privacy_risk[u_] += 1
 
@@ -222,7 +222,6 @@ class UserKNN:
                 sum_sim += sim
                 sum_ratings += sim * response
                 actual_k += 1
-                sum_rank += rank
         if actual_k < self.min_k:
             raise PredictionImpossible('Not enough neighbors.')
 
@@ -551,6 +550,7 @@ class UserKNN:
                         for neighbor, sim in top_neighbors[iid]:
                             if neighbor in knowledge[mentor]:
                                 g += sim
+                                #g += 1
                                 break
 
                 g /= len(knowledge[student])
@@ -576,17 +576,32 @@ class UserKNN:
         return protected_neighbors
 
     @staticmethod
-    def cosine_distance(A, B=None):
+    def compute_similarity(A):
+        sim = cosine_similarity(A, A)
+        return sim
+
+
+
+        """norms = np.linalg.norm(A, axis=1)
+        products = np.dot(A, A.transpose())
+        products /= norms
+        products /= norms[:, np.newaxis]
+
+        products[products < 0] = 0
+
+        return products"""
+
+    """def cosine_distance(A, B=None):
         if B is None:
             return cdist(A, A, "cosine")
         else:
-            return cdist(A, B, "cosine")
+            return cdist(A, B, "cosine")"""
 
     @staticmethod
     def topk_item_neighbors(item_vectors, k=10):
         sim = defaultdict(list)
         for item, vector_i in enumerate(item_vectors):
-            sim_i = cdist([vector_i], item_vectors)
+            sim_i = cdist([vector_i], item_vectors, "cosine")
             sim_i[0, item] = 0
             random_vector = np.random.randn(len(sim_i[0]))
             topn_items = np.lexsort((random_vector, sim_i[0]))[-k:]
