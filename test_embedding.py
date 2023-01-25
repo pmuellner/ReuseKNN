@@ -2,7 +2,7 @@ import pyximport
 import numpy as np
 pyximport.install(setup_args={"include_dirs": np.get_include()},
                   reload_support=True)
-from embeddings.knn import UserKNNEmbedding
+from algorithms.knn_neighborhood import UserKNN
 import pandas as pd
 from surprise import Dataset, Reader
 from surprise.model_selection import KFold
@@ -23,6 +23,7 @@ def run(trainset, testset, K, configuration={}):
     rated_items = configuration.get("rated_items", None)
     tau_2 = configuration.get("tau_2", 0) #expect
     tau_4 = configuration.get("tau_4", 0) #gain
+    tau_6 = configuration.get("tau_6", 0) #gainplus
     user_embedding = configuration.get("user_embedding", None)
     item_embedding = configuration.get("item_embedding", None)
 
@@ -30,9 +31,10 @@ def run(trainset, testset, K, configuration={}):
     thresholds = configuration.get("thresholds", None)
     protected = configuration.get("protected", False)
 
-    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "precomputed_sim": sim is not None,
+    config_str = str({"reuse": reuse, "tau_2": tau_2, "tau_4": tau_4, "tau_6": tau_6, "precomputed_sim": sim is not None,
                       "precomputed_pop": pop is not None, "precomputed_gain": gain is not None, "protected": protected,
-                      "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None})
+                      "precomputed_overlap": overlap is not None, "rated_items": rated_items is not None,
+                      "user_embedding": user_embedding is not None, "item_embedding": item_embedding is not None})
 
     t0 = dt.now()
     print("Started training model with K: " + str(K) + " and " + config_str)
@@ -42,8 +44,8 @@ def run(trainset, testset, K, configuration={}):
             th = thresholds[idx]
         else:
             th = 0
-        model = UserKNNEmbedding(k=k, reuse=reuse, user_embedding=user_embedding, item_embedding=item_embedding, gain_scores=gain, tau_2=tau_2, tau_4=tau_4,
-                                 threshold=th, protected=protected, overlap=overlap, rated_items=rated_items)
+        model = UserKNN(k=k, reuse=reuse, user_embedding=user_embedding, item_embedding=item_embedding, tau_2=tau_2, tau_4=tau_4, tau_6=tau_6,
+                        threshold=th, protected=protected, rated_items=rated_items)
         model.fit(trainset)
         predictions = model.test(testset)
         results["models"].append(model)
@@ -123,9 +125,8 @@ significance_test_results = defaultdict(list)
 significance_test_results_full = defaultdict(list)
 thresholds = []
 for trainset, testset in folds.split(dataset):
-    user_embedding = Embeddings("results/embeddings/" + NAME + "/UB-300-cbow-ns10-w50-c1-i300-id-fold1.embeddings")
-    item_embedding = Embeddings("results/embeddings/" + NAME + "/IB-300-cbow-ns10-w50-c1-i300-id-fold1.embeddings")
-
+    user_embedding = Embeddings("results/embeddings/" + NAME + "/UB-10-cbow-ns10-w10-c1-i25-id-fold1.embeddings")
+    item_embedding = Embeddings("results/embeddings/" + NAME + "/IB-10-cbow-ns10-w10-c1-i25-id-fold1.embeddings")
 
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
@@ -141,34 +142,45 @@ for trainset, testset in folds.split(dataset):
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
     del models
 
-    # KNN
+    # UserKNN_DP
     models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "user_embedding": user_embedding, "item_embedding": item_embedding, "protected": PROTECTED})
     results, userknn_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["userknn"].append(results["mean_absolute_error"])
-    ndcg["userknn"].append(results["avg_ndcg"])
-    recommendation_frequency["userknn"].append(results["recommendation_frequency"])
-    fraction_vulnerables["userknn"].append(results["fraction_vulnerables"])
-    privacy_risk_dp["userknn"].append(results["avg_privacy_risk_dp"])
-    neighborhood_size_q["userknn"].append(results["avg_neighborhood_size_q"])
-    rating_overlap_q["userknn"].append(results["avg_rating_overlap_q"])
-    privacy_risk_dp_secures["userknn"].append(results["avg_privacy_risk_dp_secures"])
-    privacy_risk["userknn"].append(userknn_results_samples["avg_privacy_risk"])
     del models, results
 
-    # Gain
-    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "user_embedding": user_embedding, "item_embedding": item_embedding, "tau_4": 0.5, "thresholds": threshs, "protected": PROTECTED})
+    # UserKNN
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "user_embedding": user_embedding, "item_embedding": item_embedding,
+                                                           "thresholds": [np.inf for _ in range(len(K))], "protected": False})
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    mean_absolute_error["userknn_no"].append(results["mean_absolute_error"])
+    del models, results, results_samples
+
+    # Full_DP
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "user_embedding": user_embedding, "item_embedding": item_embedding,
+                                                           "thresholds": [0 for _ in range(len(K))], "protected": True})
+    results, userknn_full_results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    mean_absolute_error["userknn_full"].append(results["mean_absolute_error"])
+    del models, results
+
+    # Expect_DP
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "tau_2": 0.5, "user_embedding": user_embedding, "item_embedding": item_embedding,
+                                                           "thresholds": threshs, "protected": PROTECTED})
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    mean_absolute_error["expect"].append(results["mean_absolute_error"])
+    del models, results, results_samples
+
+    # Gain_DP
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "tau_4": 0.5, "user_embedding": user_embedding, "item_embedding": item_embedding,
+                                                           "thresholds": threshs, "protected": PROTECTED})
     results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
     mean_absolute_error["gain"].append(results["mean_absolute_error"])
-    ndcg["gain"].append(results["avg_ndcg"])
-    recommendation_frequency["gain"].append(results["recommendation_frequency"])
-    fraction_vulnerables["gain"].append(results["fraction_vulnerables"])
-    privacy_risk_dp["gain"].append(results["avg_privacy_risk_dp"])
-    neighborhood_size_q["gain"].append(results["avg_neighborhood_size_q"])
-    rating_overlap_q["gain"].append(results["avg_rating_overlap_q"])
-    privacy_risk_dp_secures["gain"].append(results["avg_privacy_risk_dp_secures"])
-    privacy_risk["gain"].append(results_samples["avg_privacy_risk"])
-    #significance_test_results["gain"].append(evaluation.significance_tests(userknn_results_samples, results_samples))
-    #significance_test_results_full["gain"].append(evaluation.significance_tests(userknn_full_results_samples, results_samples))
+    del models, results, results_samples
+
+    # Gain+_DP
+    models, _ = run(trainset, testset, K=K, configuration={"reuse": False, "tau_6": 0.5, "user_embedding": user_embedding, "item_embedding": item_embedding,
+                                                           "thresholds": threshs, "protected": PROTECTED})
+    results, results_samples = evaluation.evaluate(models, [models[K_q_idx]])
+    mean_absolute_error["gain+"].append(results["mean_absolute_error"])
     del models, results, results_samples
 
     print(mean_absolute_error)
@@ -178,5 +190,4 @@ for trainset, testset in folds.split(dataset):
     print("Mb: " + str(mem_info.rss / (1024 * 1024)))
 
     n_folds += 1
-    break
 
