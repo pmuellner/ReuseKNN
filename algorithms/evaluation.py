@@ -3,15 +3,15 @@ from algorithms import metrics
 from collections import defaultdict
 from scipy.stats import mannwhitneyu
 
-"""def evaluate_user_groups(models, **kwargs):
-    results = dict()
-    for group, users in kwargs.items():
-        results[group] = evaluate(models, users=users)
-
-    return results"""
-
-
 def evaluate(models, models_q=None):
+    """
+    Evaluates the models based on some evaluation metrics. This includes the model after q recommendation queries and
+    also the models after all recommendation queries are processed.
+    :param models: List of models
+    :param models_q: List of models after each recommendation query
+    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
+    the average
+    """
     results, results_samples = _evaluate(models)
     if models_q is not None:
         results_q, results_q_samples = _evaluate_q(models_q)
@@ -20,6 +20,12 @@ def evaluate(models, models_q=None):
         return {**results, **results_samples}
 
 def _evaluate_q(models):
+    """
+    Evaluates the models after q recommendation queries
+    :param models: List of models
+    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
+    the average
+    """
     results = defaultdict(list)
     results_samples = defaultdict(list)
     for k_idx, m in enumerate(models):
@@ -33,6 +39,12 @@ def _evaluate_q(models):
 
 
 def _evaluate(models, users=None):
+    """
+    Evaluates the models after all recommendation queries
+    :param models: List of models
+    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
+    the average
+    """
     results = defaultdict(list)
     results_samples = defaultdict(list)
     for k_idx, m in enumerate(models):
@@ -65,6 +77,12 @@ def _evaluate(models, users=None):
     return results, results_samples
 
 def significance_tests(results1, results2):
+    """
+    Performs significance tests between results1 and results2
+    :param results1: user-wise values for the evaluation metrics
+    :param results2: user-wise values for the evaluation metrics
+    :return: dictionary of results of the significance tests
+    """
     significance = dict()
 
     mae_significance = dict()
@@ -100,6 +118,13 @@ def significance_tests(results1, results2):
     return significance
 
 def _mann_whitney_u_test(x, y, alternative="less"):
+    """
+    performs the mann whitney u test
+    :param x: first sample
+    :param y: second sample
+    :param alternative: alternative hypothesis
+    :return: U score, p value and effect size r
+    """
     u, p = mannwhitneyu(x, y, alternative=alternative)
     nx = len(x)
     ny = len(y)
@@ -112,6 +137,13 @@ def _mann_whitney_u_test(x, y, alternative="less"):
     return u, p, r
 
 def _significance_test_q(x, y, h0="<"):
+    """
+    preforms significance tests after q recommendation queries
+    :param x: first sample
+    :param y: second sample
+    :param h0: null hypothesis
+    :return: list of results (for every q one result dict)
+    """
     n_ks = len(x)
     results = []
     for k_idx in range(n_ks):
@@ -138,6 +170,13 @@ def _significance_test_q(x, y, h0="<"):
 
 
 def _significance_test(x, y, h0="<"):
+    """
+    preforms significance tests after all recommendation queries
+    :param x: first sample
+    :param y: second sample
+    :param h0: null hypothesis
+    :return: list of results (for every q one result dict)
+    """
     n_ks = len(x)
     n_samples = len(x[0])
 
