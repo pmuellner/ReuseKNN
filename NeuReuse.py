@@ -3,6 +3,7 @@ import numpy as np
 pyximport.install(setup_args={"include_dirs": np.get_include()},
                   reload_support=True)
 from algorithms.knn_neighborhood_embedding import UserKNN
+#from algorithms.knn_neighborhood import UserKNN
 
 from tensorflow import keras
 import tensorflow as tf
@@ -12,9 +13,11 @@ import pandas as pd
 import sys
 from surprise import Dataset, Reader
 from collections import defaultdict
-from algorithms.metrics import mean_absolute_error, avg_privacy_risk_dp, fraction_vulnerables
+from algorithms.metrics import mean_absolute_error, avg_privacy_risk, fraction_vulnerables
 import pickle as pl
 import argparse
+import os
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 def parse_input_str(input):
@@ -27,6 +30,7 @@ def parse_input_str(input):
             return True
     else:
         return input
+
 
 def map_embedding(embedding_dict, trainset, user_based=True):
     n = len(list(embedding_dict.values())[0])
@@ -42,28 +46,24 @@ def map_embedding(embedding_dict, trainset, user_based=True):
             embedding_array[iiid] = embedding_dict[riid]
     return embedding_array
 
+
 def EmbeddingModel(embedding_size, n_users, n_items, n_samples):
     init_normal = keras.initializers.RandomNormal(mean=0, stddev=0.01, seed=1234)
 
     user_input = keras.Input(shape=(1,), name='user_id')
-    user_emb = layers.Embedding(output_dim=embedding_size, input_dim=n_users, name='user_emb', input_length=n_samples, embeddings_initializer=init_normal)(user_input)
+    user_emb = layers.Embedding(output_dim=embedding_size, input_dim=n_users, name='user_emb', input_length=n_samples,
+                                embeddings_initializer=init_normal)(user_input)
     user_vec = layers.Flatten(name='FlattenUser')(user_emb)
     user_model = keras.Model(inputs=user_input, outputs=user_vec)
 
     item_input = keras.Input(shape=(1,), name='item_id')
-    item_emb = layers.Embedding(output_dim=embedding_size, input_dim=n_items, name='item_emb', input_length=n_samples, embeddings_initializer=init_normal)(item_input)
+    item_emb = layers.Embedding(output_dim=embedding_size, input_dim=n_items, name='item_emb', input_length=n_samples,
+                                embeddings_initializer=init_normal)(item_input)
     item_vec = layers.Flatten(name='FlattenItem')(item_emb)
     item_model = keras.Model(inputs=item_input, outputs=item_vec)
 
     # link user and item embedding
     merged = layers.Dot(name='dot_product', normalize=True, axes=2)([user_emb, item_emb])
-    #layer_1 = layers.Dense(32, name='FullyConnected-1', activation="relu")(merged)
-    #dropout_1 = layers.Dropout(0.5, name='Dropout-1')(layer_1)
-    #layer_2 = layers.Dense(16, name='FullyConnected-2', activation="relu")(layer_1)
-    #dropout_2 = layers.Dropout(0.5, name='Dropout-2')(layer_2)
-    #layer_3 = layers.Dense(8, name='FullyConnected-3', activation="relu")(layer_2)
-    #dropout_3 = layers.Dropout(0.5, name='Dropout-3')(layer_3)
-
     result = layers.Dense(1, name='result', activation="relu", kernel_initializer=init_normal)(merged)
 
     # optimization
@@ -75,7 +75,7 @@ def EmbeddingModel(embedding_size, n_users, n_items, n_samples):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--name', default="ml-100k")
+parser.add_argument('--dataset_name', default="ml-100k")
 parser.add_argument('--generate_embeddings', default=True)
 parser.add_argument('--generate_recommendations', default=True)
 parser.add_argument('--only_first_fold', default=False)
@@ -86,33 +86,33 @@ args.generate_embeddings = parse_input_str(str(args.generate_embeddings))
 args.generate_recommendations = parse_input_str(str(args.generate_recommendations))
 args.only_first_fold = parse_input_str(str(args.only_first_fold))
 
-import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus  # specify which GPU(s) to be used
 
-# todo remove this !!!
-# todo only for testing
-#args.name = "ml-1m"
-#args.generate_embeddings = False
-#args.only_first_fold = True
+DATASET_PATH = "../../datasets/"
+RESULT_PATH = "results/"
 
-if args.name == "ml-100k":
-    data_df = pd.read_csv("../datasets/ml-100k/u.data", sep="\t", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+if args.dataset_name == "ml-100k":
+    data_df = pd.read_csv(DATASET_PATH + "ml-100k/u.data", sep="\t",
+                          names=["user_id", "item_id", "rating", "timestamp"],
+                          usecols=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
-elif args.name == "ml-1m":
-    data_df = pd.read_csv("../datasets/ml-1m/ratings.dat", sep="::", names=["user_id", "item_id", "rating", "timestamp"], usecols=["user_id", "item_id", "rating"])
+elif args.dataset_name == "ml-1m":
+    data_df = pd.read_csv(DATASET_PATH + "ml-1m/ratings.dat", sep="::",
+                          names=["user_id", "item_id", "rating", "timestamp"],
+                          usecols=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
-elif args.name == "goodreads":
-    data_df = pd.read_csv("../datasets/goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
+elif args.dataset_name == "goodreads":
+    data_df = pd.read_csv(DATASET_PATH + "goodreads/sample.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
-elif args.name == "lfm":
-    data_df = pd.read_csv("../datasets/lfm/artist_ratings.csv", sep=";", names=["user_id", "item_id", "rating"])
+elif args.dataset_name == "lfm":
+    data_df = pd.read_csv(DATASET_PATH + "lfm/artist_ratings.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 1000))
-elif args.name == "ciao":
-    data_df = pd.read_csv("../datasets/ciao/ciao.csv", sep=";", names=["user_id", "item_id", "rating"])
+elif args.dataset_name == "ciao":
+    data_df = pd.read_csv(DATASET_PATH + "ciao/ciao.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
-elif args.name == "douban":
-    data_df = pd.read_csv("../datasets/douban/douban.csv", sep=";", names=["user_id", "item_id", "rating"])
+elif args.dataset_name == "douban":
+    data_df = pd.read_csv(DATASET_PATH + "douban/douban.csv", sep=";", names=["user_id", "item_id", "rating"])
     reader = Reader(rating_scale=(1, 5))
 else:
     print("error")
@@ -120,7 +120,8 @@ else:
     reader = Reader()
 
 print("=====================")
-print("Dataset: %s, Embedding Size: %d, Generate Embeddings: %s, Generate Recommendations: %s" % (args.name, 16, args.generate_embeddings, args.generate_recommendations))
+print("Dataset: %s, Embedding Size: %d, Generate Embeddings: %s, Generate Recommendations: %s"
+      % (args.dataset_name, 16, args.generate_embeddings, args.generate_recommendations))
 
 mean_absolute_errors = defaultdict(list)
 privacy_risks = defaultdict(list)
@@ -131,13 +132,12 @@ raw2inner_iid = {b: a for a, b in enumerate(data_df["item_id"].unique())}
 inner2raw_uid = {b: a for a, b in raw2inner_uid.items()}
 inner2raw_iid = {b: a for a, b in raw2inner_iid.items()}
 dataset = Dataset.load_from_df(data_df, reader=reader)
+
 kf = KFold(n_splits=5, shuffle=True, random_state=1234)
 all_methods = ["UserKNN", "UserKNN_DP", "Full_DP", "UserKNN_Static_DP", "UserKNN_Dynamic_DP"]
 for i, (train_index, valtest_index) in enumerate(kf.split(data_df)):
     if args.generate_embeddings:
-        ###########################################
-        ## generate user and item embeddings
-        ###########################################
+        # generate user and item embeddings
         print("=====================")
         print("[Fold %d] Generate Embeddings" % (i+1))
         # trainset used for training recsys and embedding, val used for evaluating embedding, test used for evaluating recsys
@@ -176,25 +176,24 @@ for i, (train_index, valtest_index) in enumerate(kf.split(data_df)):
             iiid = inner_iids[idx]
             item_embeddings_dict[inner2raw_iid[iiid]] = emb_i
 
-        with open("results/NeuReuse/" + args.name + "/user_embeddings_f" + str(i) + ".pkl", "wb") as f:
+        # save embeddings to disk
+        with open(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/user_embeddings_f" + str(i) + ".pkl", "wb") as f:
             pl.dump(user_embeddings_dict, f)
-        with open("results/NeuReuse/" + args.name + "/item_embeddings_f" + str(i) + ".pkl", "wb") as f:
+        with open(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/item_embeddings_f" + str(i) + ".pkl", "wb") as f:
             pl.dump(item_embeddings_dict, f)
 
-        train_df.to_csv("results/NeuReuse/" + args.name + "/train_f" + str(i) + ".csv", sep=";", index=False, header=None)
-        test_df.to_csv("results/NeuReuse/" + args.name + "/test_f" + str(i) + ".csv", sep=";", index=False, header=None)
+        train_df.to_csv(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/train_f" + str(i) + ".csv", sep=";", index=False, header=None)
+        test_df.to_csv(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/test_f" + str(i) + ".csv", sep=";", index=False, header=None)
     else:
         # read embeddings
-        user_embeddings_dict = pl.load(open("results/NeuReuse/" + args.name + "/user_embeddings_f" + str(i) + ".pkl", "rb"))
-        item_embeddings_dict = pl.load(open("results/NeuReuse/" + args.name + "/item_embeddings_f" + str(i) + ".pkl", "rb"))
+        user_embeddings_dict = pl.load(open(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/user_embeddings_f" + str(i) + ".pkl", "rb"))
+        item_embeddings_dict = pl.load(open(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/item_embeddings_f" + str(i) + ".pkl", "rb"))
 
-        train_df = pd.read_csv("results/NeuReuse/" + args.name + "/train_f" + str(i) + ".csv", sep=";", header=None)
-        test_df = pd.read_csv("results/NeuReuse/" + args.name + "/test_f" + str(i) + ".csv", sep=";", header=None)
+        train_df = pd.read_csv(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/train_f" + str(i) + ".csv", sep=";", header=None)
+        test_df = pd.read_csv(RESULT_PATH + "NeuReuse/" + args.dataset_name + "/test_f" + str(i) + ".csv", sep=";", header=None)
 
     if args.generate_recommendations:
-        ###########################################
-        ## generate recommendations
-        ###########################################
+        # generate recommendations
         print("=====================")
         print("[Fold %d] Generate Recommendations" % (i+1))
         trainset = dataset.construct_trainset([(*record, None) for record in train_df.to_records(index=False)])
@@ -202,7 +201,7 @@ for i, (train_index, valtest_index) in enumerate(kf.split(data_df)):
 
         user_embeddings = map_embedding(user_embeddings_dict, trainset=trainset, user_based=True)
         item_embeddings = map_embedding(item_embeddings_dict, trainset=trainset, user_based=False)
-        user_sim = UserKNN.compute_similarity(user_embeddings)
+        user_sim = cosine_similarity(user_embeddings, user_embeddings)
 
         Ks = [5, 10, 15, 20, 25, 30]
         mean_absolute_errors_f = defaultdict(list)
@@ -210,43 +209,44 @@ for i, (train_index, valtest_index) in enumerate(kf.split(data_df)):
         fraction_protected_users_f = defaultdict(list)
         for k_idx, k in enumerate(Ks):
             # UserKNN and compute privacy risk threshold tau
-            model = UserKNN(k=k, threshold=np.inf, protected=False, precomputed_sim=user_sim)
+            model = UserKNN(k=k, threshold=np.inf, use_dp=False, sim=user_sim)
             model.fit(trainset).test(testset)
             mean_absolute_errors_f["UserKNN"].append(mean_absolute_error(model)[0])
-            privacy_risks_f["UserKNN"].append(avg_privacy_risk_dp(model)[0])
+            privacy_risks_f["UserKNN"].append(avg_privacy_risk(model)[0])
             fraction_protected_users_f["UserKNN"].append(fraction_vulnerables(model))
             tau = model.get_privacy_threshold()
             print("[" + str(k) + " Neighbors] UserKNN", end=", ")
 
             # UserKNN_DP
-            model = UserKNN(k=k, threshold=tau, protected=True, precomputed_sim=user_sim)
+            model = UserKNN(k=k, threshold=tau, use_dp=True, sim=user_sim)
             model.fit(trainset).test(testset)
             mean_absolute_errors_f["UserKNN_DP"].append(mean_absolute_error(model)[0])
-            privacy_risks_f["UserKNN_DP"].append(avg_privacy_risk_dp(model)[0])
+            privacy_risks_f["UserKNN_DP"].append(avg_privacy_risk(model)[0])
             fraction_protected_users_f["UserKNN_DP"].append(fraction_vulnerables(model))
             print("UserKNN_DP", end=", ")
 
             # Full_DP
-            model = UserKNN(k=k, threshold=0, protected=True, precomputed_sim=user_sim)
+            model = UserKNN(k=k, threshold=0, use_dp=True, sim=user_sim)
             model.fit(trainset).test(testset)
             mean_absolute_errors_f["Full_DP"].append(mean_absolute_error(model)[0])
-            privacy_risks_f["Full_DP"].append(avg_privacy_risk_dp(model)[0])
+            privacy_risks_f["Full_DP"].append(avg_privacy_risk(model)[0])
             fraction_protected_users_f["Full_DP"].append(fraction_vulnerables(model))
             print("Full_DP", end=", ")
 
             # UserKNN+Reuse_DP
-            model = UserKNN(k=k, threshold=tau, protected=True, precomputed_sim=user_sim, explicit_reuse_option="static")
+            model = UserKNN(k=k, threshold=tau, use_dp=True, sim=user_sim, explicit_reuse_option="static")
             model.fit(trainset).test(testset)
             mean_absolute_errors_f["UserKNN_Static_DP"].append(mean_absolute_error(model)[0])
-            privacy_risks_f["UserKNN_Static_DP"].append(avg_privacy_risk_dp(model)[0])
+            privacy_risks_f["UserKNN_Static_DP"].append(avg_privacy_risk(model)[0])
             fraction_protected_users_f["UserKNN_Static_DP"].append(fraction_vulnerables(model))
             print("UserKNN+Reuse_DP", end=", ")
 
             # NeuReuse_DP
-            model = UserKNN(k=k, threshold=tau, protected=True, precomputed_sim=user_sim, explicit_reuse_option="dynamic", item_embeddings=item_embeddings)
+            model = UserKNN(k=k, threshold=tau, use_dp=True, sim=user_sim, explicit_reuse_option="dynamic",
+                            item_embeddings=item_embeddings)
             model.fit(trainset).test(testset)
             mean_absolute_errors_f["UserKNN_Dynamic_DP"].append(mean_absolute_error(model)[0])
-            privacy_risks_f["UserKNN_Dynamic_DP"].append(avg_privacy_risk_dp(model)[0])
+            privacy_risks_f["UserKNN_Dynamic_DP"].append(avg_privacy_risk(model)[0])
             fraction_protected_users_f["UserKNN_Dynamic_DP"].append(fraction_vulnerables(model))
             print("NeuReuse_DP")
 
@@ -264,11 +264,11 @@ if args.generate_recommendations:
         privacy_risks[method] = np.mean(privacy_risks[method], axis=0)
         fraction_protected_users[method] = np.mean(fraction_protected_users[method], axis=0)
 
-    with open("results/NeuReuse/" + args.name + "/mean_absolute_error" + ".pkl", "wb") as f:
+    with open("results/NeuReuse/" + args.dataset_name + "/mean_absolute_error" + ".pkl", "wb") as f:
         pl.dump(mean_absolute_errors, f)
-    with open("results/NeuReuse/" + args.name + "/privacy_risk" + ".pkl", "wb") as f:
+    with open("results/NeuReuse/" + args.dataset_name + "/privacy_risk" + ".pkl", "wb") as f:
         pl.dump(privacy_risks, f)
-    with open("results/NeuReuse/" + args.name + "/fraction_vulnerables" + ".pkl", "wb") as f:
+    with open("results/NeuReuse/" + args.dataset_name + "/fraction_vulnerables" + ".pkl", "wb") as f:
         pl.dump(fraction_protected_users, f)
 
 

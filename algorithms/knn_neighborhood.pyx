@@ -1,6 +1,3 @@
-#todo
-# add some text that we use code from surprise
-
 cimport numpy as np
 import numpy as np
 import heapq

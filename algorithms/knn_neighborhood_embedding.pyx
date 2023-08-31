@@ -11,20 +11,25 @@ class PredictionImpossible(Exception):
     pass
 
 class UserKNN:
-    def __init__(self, k=40, min_k=1, explicit_reuse_option=None, precomputed_sim=None, threshold=0, protected=False, user_embeddings=None, item_embeddings=None):
+    """
+    Class for NeuCF-based recommendations (large parts from https://github.com/NicolasHug/Surprise/blob/master/surprise/prediction_algorithms/knns.py)
+    """
+    def __init__(self, k=40, min_k=1, explicit_reuse_option=None, sim=None, threshold=0, use_dp=False,
+                 user_embeddings=None, item_embeddings=None):
         self.k = k
         self.min_k = min_k
         self.mentors = defaultdict(set)
         self.explicit_reuse_option = explicit_reuse_option
-        self.user_sim = precomputed_sim
+        self.user_sim = sim
         self.threshold = threshold
-        self.protected = protected
+        self.use_dp = use_dp
         self.previous_query_neighborhoods = defaultdict(dict)
-        self.trainset = None
-        self.privacy_risk = 0
-        self.privacy_risk_dp = 0
         self.user_embeddings = user_embeddings
         self.item_embeddings = item_embeddings
+        self.trainset = None
+        self.data_usage = None
+        self.privacy_risk = None
+        self.ranking = None
 
     def fit(self, trainset):
         self.trainset = trainset
@@ -32,8 +37,8 @@ class UserKNN:
         if self.user_sim is None:
             self.user_sim = UserKNN.compute_similarity(self.user_embeddings)
 
+        self.data_usage = np.zeros(self.trainset.n_users)
         self.privacy_risk = np.zeros(self.trainset.n_users)
-        self.privacy_risk_dp = np.zeros(self.trainset.n_users)
 
         self.ranking = np.zeros((self.trainset.n_users, self.trainset.n_users))
         for u in self.trainset.all_users():
@@ -119,13 +124,13 @@ class UserKNN:
             if sim <= 0:
                 continue
 
-            self.privacy_risk[u_] += 1
+            self.data_usage[u_] += 1
 
             response = r
-            if self.protected and self.privacy_risk[u_] > self.threshold:
+            if self.use_dp and self.data_usage[u_] > self.threshold:
                 response = deniable_answer(self, u_, i)
             else:
-                self.privacy_risk_dp[u_] += 1
+                self.privacy_risk[u_] += 1
 
             sum_sim += sim
             sum_ratings += sim * response
