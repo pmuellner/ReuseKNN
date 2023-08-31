@@ -3,14 +3,11 @@ import numpy as np
 pyximport.install(setup_args={"include_dirs": np.get_include()},
                   reload_support=True)
 from algorithms.knn_neighborhood_embedding import UserKNN
-#from algorithms.knn_neighborhood import UserKNN
 
 from tensorflow import keras
-import tensorflow as tf
 from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split, KFold
 import pandas as pd
-import sys
 from surprise import Dataset, Reader
 from collections import defaultdict
 from algorithms.metrics import mean_absolute_error, avg_privacy_risk, fraction_vulnerables
