@@ -4,14 +4,6 @@ from collections import defaultdict
 from scipy.stats import mannwhitneyu
 
 def evaluate(models, models_q=None):
-    """
-    Evaluates the models based on some evaluation metrics. This includes the model after q recommendation queries and
-    also the models after all recommendation queries are processed.
-    :param models: List of models
-    :param models_q: List of models after each recommendation query
-    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
-    the average
-    """
     results, results_samples = _evaluate(models)
     if models_q is not None:
         results_q, results_q_samples = _evaluate_q(models_q)
@@ -20,12 +12,6 @@ def evaluate(models, models_q=None):
         return {**results, **results_samples}
 
 def _evaluate_q(models):
-    """
-    Evaluates the models after q recommendation queries
-    :param models: List of models
-    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
-    the average
-    """
     results = defaultdict(list)
     results_samples = defaultdict(list)
     for k_idx, m in enumerate(models):
@@ -39,50 +25,38 @@ def _evaluate_q(models):
 
 
 def _evaluate(models, users=None):
-    """
-    Evaluates the models after all recommendation queries
-    :param models: List of models
-    :return: dict() where the key is the evaluation metric and the value is the average value over all users; and without
-    the average
-    """
     results = defaultdict(list)
     results_samples = defaultdict(list)
     for k_idx, m in enumerate(models):
-        avg, sample = metrics.mean_absolute_error(m, users=users)
+        avg, sample = metrics.mean_absolute_error(m)
         results["mean_absolute_error"].append(avg)
         results_samples["mean_absolute_error"].append(sample)
-        avg, sample = metrics.avg_privacy_risk_dp(m, users=users)
-        results["avg_privacy_risk_dp"].append(avg)
-        results_samples["avg_privacy_risk_dp"].append(sample)
-        avg, sample = metrics.avg_privacy_risk(m, users=users)
+        avg, sample = metrics.avg_privacy_risk(m)
         results["avg_privacy_risk"].append(avg)
         results_samples["avg_privacy_risk"].append(sample)
-        avg, sample = metrics.ndcg(m, users=users)
+        avg, sample = metrics.avg_data_usage(m)
+        results["avg_data_usage"].append(avg)
+        results_samples["avg_data_usage"].append(sample)
+        avg, sample = metrics.ndcg(m)
         results["avg_ndcg"].append(avg)
         results_samples["avg_ndcg"].append(sample)
 
-        frac_vulnerables = metrics.fraction_vulnerables(m, users=users)
+        frac_vulnerables = metrics.fraction_vulnerables(m)
         results["fraction_vulnerables"].append(frac_vulnerables)
         if 1 - frac_vulnerables > 0:
-            below_threshold_pr = (m.privacy_risk[m.privacy_risk < m.threshold])
+            below_threshold_pr = (m.data_usage[m.data_usage < m.threshold])
 
         else:
             # if there are no secures
             below_threshold_pr = [0]
-        results["avg_privacy_risk_dp_secures"].append(np.mean(below_threshold_pr))
-        results_samples["avg_privacy_risk_dp_secures"].append(below_threshold_pr)
+        results["avg_privacy_risk_secures"].append(np.mean(below_threshold_pr))
+        results_samples["avg_privacy_risk_secures"].append(below_threshold_pr)
 
-        results["recommendation_frequency"].append(metrics.recommendation_frequency(m, n=10, users=users))
+        results["recommendation_frequency"].append(metrics.recommendation_frequency(m, n=10))
 
     return results, results_samples
 
 def significance_tests(results1, results2):
-    """
-    Performs significance tests between results1 and results2
-    :param results1: user-wise values for the evaluation metrics
-    :param results2: user-wise values for the evaluation metrics
-    :return: dictionary of results of the significance tests
-    """
     significance = dict()
 
     mae_significance = dict()
@@ -92,39 +66,41 @@ def significance_tests(results1, results2):
     significance["mean_absolute_error"] = mae_significance
 
     pr_significance = dict()
-    pr_significance["<"] = _significance_test(results1["avg_privacy_risk_dp"], results2["avg_privacy_risk_dp"], h0="<")
-    pr_significance[">"] = _significance_test(results1["avg_privacy_risk_dp"], results2["avg_privacy_risk_dp"], h0=">")
-    pr_significance["=="] = _significance_test(results1["avg_privacy_risk_dp"], results2["avg_privacy_risk_dp"], h0="==")
-    significance["privacy_risk_dp"] = pr_significance
+    pr_significance["<"] = _significance_test(results1["avg_privacy_risk"], results2["avg_privacy_risk"], h0="<")
+    pr_significance[">"] = _significance_test(results1["avg_privacy_risk"], results2["avg_privacy_risk"], h0=">")
+    pr_significance["=="] = _significance_test(results1["avg_privacy_risk"], results2["avg_privacy_risk"], h0="==")
+    significance["privacy_risk"] = pr_significance
 
     pr_secure_significance = dict()
-    pr_secure_significance["<"] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0="<")
-    pr_secure_significance[">"] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0=">")
-    pr_secure_significance["=="] = _significance_test(results1["avg_privacy_risk_dp_secures"], results2["avg_privacy_risk_dp_secures"], h0="==")
-    significance["privacy_risk_dp_secures"] = pr_secure_significance
+    pr_secure_significance["<"] = _significance_test(results1["avg_privacy_risk_secures"],
+                                                     results2["avg_privacy_risk_secures"], h0="<")
+    pr_secure_significance[">"] = _significance_test(results1["avg_privacy_risk_secures"],
+                                                     results2["avg_privacy_risk_secures"], h0=">")
+    pr_secure_significance["=="] = _significance_test(results1["avg_privacy_risk_secures"],
+                                                      results2["avg_privacy_risk_secures"], h0="==")
+    significance["privacy_risk_secures"] = pr_secure_significance
 
     neighborhood_size_significance = dict()
-    neighborhood_size_significance["<"] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0="<")
-    neighborhood_size_significance[">"] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0=">")
-    neighborhood_size_significance["=="] = _significance_test_q(results1["avg_neighborhood_size_q"], results2["avg_neighborhood_size_q"], h0="==")
+    neighborhood_size_significance["<"] = _significance_test_q(results1["avg_neighborhood_size_q"],
+                                                               results2["avg_neighborhood_size_q"], h0="<")
+    neighborhood_size_significance[">"] = _significance_test_q(results1["avg_neighborhood_size_q"],
+                                                               results2["avg_neighborhood_size_q"], h0=">")
+    neighborhood_size_significance["=="] = _significance_test_q(results1["avg_neighborhood_size_q"],
+                                                                results2["avg_neighborhood_size_q"], h0="==")
     significance["avg_neighborhood_size_q"] = neighborhood_size_significance
 
     rating_overlap_significance = dict()
-    rating_overlap_significance["<"] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0="<")
-    rating_overlap_significance[">"] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0=">")
-    rating_overlap_significance["=="] = _significance_test_q(results1["avg_rating_overlap_q"], results2["avg_rating_overlap_q"], h0="==")
+    rating_overlap_significance["<"] = _significance_test_q(results1["avg_rating_overlap_q"],
+                                                            results2["avg_rating_overlap_q"], h0="<")
+    rating_overlap_significance[">"] = _significance_test_q(results1["avg_rating_overlap_q"],
+                                                            results2["avg_rating_overlap_q"], h0=">")
+    rating_overlap_significance["=="] = _significance_test_q(results1["avg_rating_overlap_q"],
+                                                            results2["avg_rating_overlap_q"], h0="==")
     significance["avg_rating_overlap_q"] = rating_overlap_significance
 
     return significance
 
 def _mann_whitney_u_test(x, y, alternative="less"):
-    """
-    performs the mann whitney u test
-    :param x: first sample
-    :param y: second sample
-    :param alternative: alternative hypothesis
-    :return: U score, p value and effect size r
-    """
     u, p = mannwhitneyu(x, y, alternative=alternative)
     nx = len(x)
     ny = len(y)
@@ -137,13 +113,6 @@ def _mann_whitney_u_test(x, y, alternative="less"):
     return u, p, r
 
 def _significance_test_q(x, y, h0="<"):
-    """
-    preforms significance tests after q recommendation queries
-    :param x: first sample
-    :param y: second sample
-    :param h0: null hypothesis
-    :return: list of results (for every q one result dict)
-    """
     n_ks = len(x)
     results = []
     for k_idx in range(n_ks):
@@ -170,17 +139,9 @@ def _significance_test_q(x, y, h0="<"):
 
 
 def _significance_test(x, y, h0="<"):
-    """
-    preforms significance tests after all recommendation queries
-    :param x: first sample
-    :param y: second sample
-    :param h0: null hypothesis
-    :return: list of results (for every q one result dict)
-    """
     n_ks = len(x)
     n_samples = len(x[0])
 
-    #n_ks, n_samples = np.array(x).shape
     results = []
     for k_idx in range(n_ks):
         if np.array_equal(x[k_idx], y[k_idx]):
