@@ -1,12 +1,13 @@
 #todo
 # add some text that we use code from surprise
 
-
+cimport numpy as np
 import numpy as np
 import heapq
 from collections import defaultdict
 from sklearn.neighbors import KernelDensity
 from scipy.stats import rankdata
+
 class PredictionImpossible(Exception):
     pass
 

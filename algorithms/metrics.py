@@ -1,6 +1,6 @@
 import numpy as np
 from collections import defaultdict
-from algorithms.utils import get_top_n, get_groundtruth
+from algorithms.utils import get_groundtruth
 
 
 def avg_neighborhood_size_q(model, n_queries):
@@ -55,7 +55,7 @@ def ndcg(model, n=10):
     the normalized discounted cumulative gain of the top n items with the highest estimated rating score
     """
     groundtruth = get_groundtruth(model.predictions, threshold=model.trainset.global_mean)
-    recommendation_lists = get_top_n(model.predictions, n=n)
+    recommendation_lists = _top_recommendations(model, n=n)
     ndcgs = []
     for uid, rec_list in recommendation_lists.items():
         n = len(rec_list)
